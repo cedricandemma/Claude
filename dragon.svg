@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b1f3a"/>
+      <stop offset="1" stop-color="#4a2c5e"/>
+    </linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3fae5a"/>
+      <stop offset="1" stop-color="#1d6b35"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e8a47"/>
+      <stop offset="1" stop-color="#7a2f2f"/>
+    </linearGradient>
+    <radialGradient id="fire" cx="0" cy="0.5" r="1">
+      <stop offset="0" stop-color="#fff6a8"/>
+      <stop offset="0.4" stop-color="#ffb627"/>
+      <stop offset="1" stop-color="#e2381b" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Ciel et lune -->
+  <rect width="800" height="600" fill="url(#sky)"/>
+  <circle cx="660" cy="110" r="55" fill="#f4e9c1"/>
+  <circle cx="640" cy="95" r="10" fill="#e3d6a6"/>
+  <circle cx="680" cy="130" r="7" fill="#e3d6a6"/>
+  <g fill="#fff">
+    <circle cx="80" cy="60" r="2"/><circle cx="200" cy="120" r="1.5"/>
+    <circle cx="330" cy="50" r="2"/><circle cx="470" cy="90" r="1.5"/>
+    <circle cx="560" cy="40" r="2"/><circle cx="750" cy="220" r="1.5"/>
+    <circle cx="120" cy="230" r="1.5"/><circle cx="420" cy="180" r="1.2"/>
+  </g>
+
+  <!-- Montagnes -->
+  <path d="M0 600 L0 470 L120 380 L230 460 L340 350 L470 470 L590 390 L720 480 L800 430 L800 600 Z" fill="#161629"/>
+
+  <!-- Aile arrière -->
+  <path d="M390 300 L300 120 L330 200 L270 150 L300 240 L240 210 L300 300 Z"
+        fill="#1a5a2c" stroke="#0f3a1c" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- Queue -->
+  <path d="M300 360 C220 400 160 460 90 440 C50 430 40 400 70 390 C100 400 150 400 200 360 C240 330 270 330 300 340 Z"
+        fill="url(#body)" stroke="#0f3a1c" stroke-width="3"/>
+  <path d="M70 390 L35 370 L55 405 L25 420 L70 415 Z" fill="#b8322a" stroke="#6b1a15" stroke-width="2"/>
+
+  <!-- Pattes arrière -->
+  <path d="M340 390 L330 470 L300 480 L350 485 L365 400 Z" fill="#1d6b35" stroke="#0f3a1c" stroke-width="3"/>
+
+  <!-- Corps -->
+  <ellipse cx="390" cy="360" rx="110" ry="60" fill="url(#body)" stroke="#0f3a1c" stroke-width="3"/>
+  <!-- Ventre -->
+  <path d="M320 385 C360 420 440 420 480 385 C450 400 360 405 320 385 Z" fill="#e8d18a"/>
+  <g stroke="#b99b4f" stroke-width="2">
+    <line x1="350" y1="395" x2="352" y2="407"/>
+    <line x1="380" y1="400" x2="381" y2="412"/>
+    <line x1="410" y1="400" x2="410" y2="412"/>
+    <line x1="440" y1="396" x2="438" y2="408"/>
+  </g>
+
+  <!-- Pattes avant -->
+  <path d="M440 390 L450 470 L420 482 L470 485 L470 395 Z" fill="#2a8043" stroke="#0f3a1c" stroke-width="3"/>
+
+  <!-- Épines dorsales -->
+  <g fill="#b8322a" stroke="#6b1a15" stroke-width="2" stroke-linejoin="round">
+    <path d="M300 335 L310 305 L325 325 Z"/>
+    <path d="M330 310 L345 280 L358 305 Z"/>
+    <path d="M365 302 L380 270 L392 300 Z"/>
+    <path d="M400 302 L415 272 L425 305 Z"/>
+    <path d="M435 310 L452 285 L458 318 Z"/>
+  </g>
+
+  <!-- Cou -->
+  <path d="M460 330 C500 290 520 240 540 210 L580 230 C560 270 530 320 490 370 Z"
+        fill="url(#body)" stroke="#0f3a1c" stroke-width="3"/>
+
+  <!-- Aile avant -->
+  <path d="M410 310 L360 90 L405 180 L420 70 L450 185 L500 110 L480 230 L540 200 L470 320 Z"
+        fill="url(#wing)" stroke="#0f3a1c" stroke-width="3" stroke-linejoin="round"/>
+  <g stroke="#0f3a1c" stroke-width="2" fill="none">
+    <path d="M410 310 L360 90"/><path d="M410 310 L420 70"/>
+    <path d="M410 310 L500 110"/><path d="M410 310 L540 200"/>
+  </g>
+
+  <!-- Tête -->
+  <path d="M530 200 C550 170 600 165 630 185 L680 200 C690 205 688 220 675 222 L620 228 C600 240 560 245 540 235 Z"
+        fill="url(#body)" stroke="#0f3a1c" stroke-width="3"/>
+  <!-- Mâchoire -->
+  <path d="M600 228 L672 226 L640 242 C620 248 600 244 590 236 Z" fill="#1d6b35" stroke="#0f3a1c" stroke-width="2"/>
+  <!-- Cornes -->
+  <path d="M560 180 L530 130 L575 172 Z" fill="#e8d18a" stroke="#8a7334" stroke-width="2"/>
+  <path d="M585 172 L570 120 L600 168 Z" fill="#e8d18a" stroke="#8a7334" stroke-width="2"/>
+  <!-- Oeil -->
+  <ellipse cx="600" cy="192" rx="11" ry="7" fill="#ffd23f" stroke="#0f3a1c" stroke-width="2"/>
+  <ellipse cx="602" cy="192" rx="2.5" ry="6" fill="#111"/>
+  <!-- Narine -->
+  <circle cx="668" cy="206" r="3" fill="#0f3a1c"/>
+  <!-- Dents -->
+  <g fill="#fff">
+    <path d="M640 226 L644 234 L648 226 Z"/>
+    <path d="M655 226 L659 233 L663 226 Z"/>
+  </g>
+
+  <!-- Flammes -->
+  <path d="M672 222 C710 200 760 190 800 170 L800 290 C760 270 710 260 672 232 Z" fill="url(#fire)"/>
+  <path d="M672 225 C700 215 730 212 760 205 C735 225 705 232 672 230 Z" fill="#fff6a8" opacity="0.8"/>
+</svg>
