@@ -11,7 +11,8 @@ Tourism_template_XBRL.xlsx enregistré en CSV (séparateur point-virgule, sans t
     pays ; but du séjour ; jour de départ (aaaa-mm-jj) ; nuits ; personnes ; unités ; région BE
 Statbel rattache un séjour au mois de sa date de départ (check-out).
 Le websurvey exige 7 colonnes (le modèle Excel n'en montre que 6, il est antérieur à la
-colonne région). La région reste vide sauf avec l'option --avec-region.
+colonne région). La région n'est remplie que pour les résidents belges : d'après le code
+postal quand il est connu, sinon selon la répartition 80 % Flandre / 20 % Wallonie.
 """
 import argparse
 import csv
@@ -23,14 +24,16 @@ from pathlib import Path
 
 import xlrd
 
-# But du séjour : le modèle Statbel accepte 1, 2 ou 3 sans en donner le libellé.
-# Vérifier l'ordre de la liste déroulante "But du séjour" du websurvey.
+# Codes du websurvey Statbel.
+# But du séjour : 1 loisirs, vacances ; 2 conférence, congrès, séminaire ;
+# 3 autres raisons professionnelles. Booking.com ne distingue que "Affaires" -> 3.
 BUT_LOISIRS = "1"
-BUT_PROFESSIONNEL = "2"
-# Codes région : uniquement utilisés avec --avec-region, à aligner sur la liste du websurvey.
-REGION_BRUXELLES = "1"
-REGION_FLANDRE = "2"
-REGION_WALLONIE = "3"
+BUT_PROFESSIONNEL = "3"
+# Région de résidence en Belgique.
+REGION_WALLONIE = "1"
+REGION_BRUXELLES = "2"
+REGION_FLANDRE = "3"
+REGION_GERMANOPHONE = "4"
 # Clientèle belge sans code postal connu : 4 sur 5 en Flandre, 1 sur 5 en Wallonie.
 PART_WALLONIE_SANS_CP = 5
 
@@ -66,6 +69,8 @@ def region_depuis_code_postal(cp):
     n = int(m.group(1))
     if 1000 <= n <= 1299:
         return REGION_BRUXELLES
+    if 4700 <= n <= 4799:
+        return REGION_GERMANOPHONE
     if 1300 <= n <= 1499 or 4000 <= n <= 7999:
         return REGION_WALLONIE
     if 1500 <= n <= 3999 or 8000 <= n <= 9999:
@@ -132,8 +137,6 @@ def main():
     ap.add_argument("dossier")
     ap.add_argument("--mois", help="AAAA-MM ; par défaut tous les mois présents")
     ap.add_argument("--out", default=".")
-    ap.add_argument("--avec-region", action="store_true",
-                    help="remplit la région BE (7e colonne), codes REGION_* à confirmer")
     args = ap.parse_args()
 
     sejours = []
@@ -153,17 +156,19 @@ def main():
         if args.mois and mois != args.mois:
             continue
         lignes = sorted(par_mois[mois], key=lambda s: (s["depart"], s["ref"]))
-        sans_cp = [s for s in lignes if s["pays"] == "BE" and not s["region"]]
-        for i, s in enumerate(sans_cp):
-            s["region_estimee"] = True
-            s["region"] = REGION_WALLONIE if i % PART_WALLONIE_SANS_CP == PART_WALLONIE_SANS_CP - 1 \
-                else REGION_FLANDRE
+        for s in lignes:
+            if s["pays"] == "BE" and not s["region"]:
+                # Répartition stable d'un mois à l'autre : 1 réservation sur 5 en Wallonie,
+                # selon le dernier chiffre utile du numéro de réservation.
+                s["region_estimee"] = True
+                s["region"] = REGION_WALLONIE if int(s["ref"]) % PART_WALLONIE_SANS_CP == 0 \
+                    else REGION_FLANDRE
         with open(out / f"statbel_{mois}.csv", "w", encoding="utf-8", newline="") as f:
             w = csv.writer(f, delimiter=";")
             for s in lignes:
                 ligne = [s["pays"], s["but"], s["depart"].isoformat(), s["nuits"],
                          s["personnes"], s["unites"]]
-                ligne.append(s["region"] if args.avec_region else "")
+                ligne.append(s["region"])
                 w.writerow(ligne)
         nuitees = sum(s["nuits"] * s["personnes"] for s in lignes)
         print(f"\n{mois} : {len(lignes)} séjours, {nuitees} nuitées -> statbel_{mois}.csv")
