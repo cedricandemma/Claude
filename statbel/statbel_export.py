@@ -137,6 +137,8 @@ def main():
     ap.add_argument("dossier")
     ap.add_argument("--mois", help="AAAA-MM ; par défaut tous les mois présents")
     ap.add_argument("--out", default=".")
+    ap.add_argument("--format-date", default="%Y-%m-%d",
+                    help="format de la date de départ, ex. %%d/%%m/%%Y (défaut %%Y-%%m-%%d)")
     args = ap.parse_args()
 
     sejours = []
@@ -166,7 +168,7 @@ def main():
         with open(out / f"statbel_{mois}.csv", "w", encoding="utf-8", newline="") as f:
             w = csv.writer(f, delimiter=";")
             for s in lignes:
-                ligne = [s["pays"], s["but"], s["depart"].isoformat(), s["nuits"],
+                ligne = [s["pays"], s["but"], s["depart"].strftime(args.format_date), s["nuits"],
                          s["personnes"], s["unites"]]
                 ligne.append(s["region"])
                 w.writerow(ligne)
