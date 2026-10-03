@@ -38,3 +38,16 @@ Les exports peuvent couvrir plusieurs mois. L'outil ne garde que les séjours do
 ```
 pip install pandas xlrd openpyxl
 ```
+
+## Facture Word « Clients divers »
+
+`facture.py` produit la facture Word à partir des mêmes exports, sur un ou plusieurs mois. Toutes les nuitées y sont à 12 %.
+
+```
+python facture.py --du 2026-07 --au 2026-09 --booking "Arrivée du ....xls" --site mphb-bookings-....csv \
+    --numero 2026-SB-03 --date 30/09/2026
+```
+
+La première page porte le logo, les coordonnées de la société, le récapitulatif par mois et les totaux. L'annexe en format paysage reprend le détail par réservation : canal, numéro de réservation, client, chambre, arrivée, départ, nuits, montant TVAC, taux de TVA, montant HTVA et TVA, avec un sous-total par mois.
+
+Le rendu Word passe par `facture.js`, qui demande Node.js et le paquet npm `docx`. Le logo est dans `assets/logo_chez_spoons.png`.
