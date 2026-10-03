@@ -8,9 +8,10 @@ Usage :
 
 Un fichier statbel_AAAA-MM.csv est produit par mois, au format du modèle
 Tourism_template_XBRL.xlsx enregistré en CSV (séparateur point-virgule, sans titres) :
-    pays ; but du séjour ; jour de départ (aaaa-mm-jj) ; nuits ; personnes ; unités
+    pays ; but du séjour ; jour de départ (aaaa-mm-jj) ; nuits ; personnes ; unités ; région BE
 Statbel rattache un séjour au mois de sa date de départ (check-out).
-L'option --avec-region ajoute une 7e colonne région BE, absente du modèle officiel.
+Le websurvey exige 7 colonnes (le modèle Excel n'en montre que 6, il est antérieur à la
+colonne région). La région reste vide sauf avec l'option --avec-region.
 """
 import argparse
 import csv
@@ -26,7 +27,7 @@ import xlrd
 # Vérifier l'ordre de la liste déroulante "But du séjour" du websurvey.
 BUT_LOISIRS = "1"
 BUT_PROFESSIONNEL = "2"
-# Codes région : uniquement utilisés avec --avec-region, à confirmer auprès de Statbel.
+# Codes région : uniquement utilisés avec --avec-region, à aligner sur la liste du websurvey.
 REGION_BRUXELLES = "1"
 REGION_FLANDRE = "2"
 REGION_WALLONIE = "3"
@@ -132,7 +133,7 @@ def main():
     ap.add_argument("--mois", help="AAAA-MM ; par défaut tous les mois présents")
     ap.add_argument("--out", default=".")
     ap.add_argument("--avec-region", action="store_true",
-                    help="ajoute la région BE en 7e colonne (hors modèle officiel)")
+                    help="remplit la région BE (7e colonne), codes REGION_* à confirmer")
     args = ap.parse_args()
 
     sejours = []
@@ -162,8 +163,7 @@ def main():
             for s in lignes:
                 ligne = [s["pays"], s["but"], s["depart"].isoformat(), s["nuits"],
                          s["personnes"], s["unites"]]
-                if args.avec_region:
-                    ligne.append(s["region"])
+                ligne.append(s["region"] if args.avec_region else "")
                 w.writerow(ligne)
         nuitees = sum(s["nuits"] * s["personnes"] for s in lignes)
         print(f"\n{mois} : {len(lignes)} séjours, {nuitees} nuitées -> statbel_{mois}.csv")
