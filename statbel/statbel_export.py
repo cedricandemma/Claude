@@ -132,6 +132,37 @@ def lire_booking(path):
     return sejours
 
 
+LIBELLES_BUT = {"1": "(1) loisirs, vacances", "2": "(2) conférence, congrès, séminaire",
+                "3": "(3) autres raisons professionnelles"}
+LIBELLES_REGION = {"1": "(1) Wallonie", "2": "(2) Bruxelles", "3": "(3) Flandre",
+                   "4": "(4) Communauté germanophone"}
+
+
+def ecrire_classeur_saisie(chemin, mois_lignes):
+    """Classeur lisible pour la saisie manuelle : un onglet par mois, libellés du websurvey."""
+    import openpyxl
+    from openpyxl.styles import Font
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for mois, lignes in mois_lignes:
+        ws = wb.create_sheet(mois)
+        ws.append(["Pays de résidence", "But du séjour", "Jour de départ", "Nombre de nuits",
+                   "Nombre de personnes", "Nombre d'unités", "Région de résidence en Belgique",
+                   "Source", "Réservation", "Client"])
+        for c in ws[1]:
+            c.font = Font(bold=True)
+        for s in lignes:
+            ws.append([s["pays"], LIBELLES_BUT[s["but"]], s["depart"].strftime("%d/%m/%Y"),
+                       s["nuits"], s["personnes"], s["unites"],
+                       LIBELLES_REGION.get(s["region"], "") +
+                       (" (estimée)" if s.get("region_estimee") else ""),
+                       s["source"], s["ref"], s["nom"]])
+        for col, largeur in zip("ABCDEFGHIJ", (10, 24, 14, 10, 12, 10, 30, 9, 13, 28)):
+            ws.column_dimensions[col].width = largeur
+        ws.freeze_panes = "A2"
+    wb.save(chemin)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("dossier")
@@ -154,6 +185,7 @@ def main():
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    pour_saisie = []
     for mois in sorted(par_mois):
         if args.mois and mois != args.mois:
             continue
@@ -172,12 +204,17 @@ def main():
                          s["personnes"], s["unites"]]
                 ligne.append(s["region"])
                 w.writerow(ligne)
+        pour_saisie.append((mois, lignes))
         nuitees = sum(s["nuits"] * s["personnes"] for s in lignes)
         print(f"\n{mois} : {len(lignes)} séjours, {nuitees} nuitées -> statbel_{mois}.csv")
         for s in lignes:
             alerte = "  <- région estimée" if s.get("region_estimee") else ""
             print(f'  départ {s["depart"]} {s["source"]:7} {s["ref"]:>11} {s["pays"]} '
                   f'{s["nuits"]}n {s["personnes"]}p {s["unites"]}ch {s["nom"]}{alerte}')
+
+    if pour_saisie:
+        ecrire_classeur_saisie(out / "statbel_saisie.xlsx", pour_saisie)
+        print("\nClasseur de saisie manuelle -> statbel_saisie.xlsx")
 
 
 if __name__ == "__main__":
