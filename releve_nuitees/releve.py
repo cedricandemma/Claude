@@ -140,7 +140,8 @@ def lire_site(chemin):
             numero=f"#{numero}" if numero else "",
             statut="annulée" if any(x in statut for x in STATUTS_ANNULES_SITE) else "ok",
         ))
-    return dedoublonner_site(resas)
+    actives = [r for r in resas if r.statut == "ok"]
+    return dedoublonner_site(actives) + [r for r in resas if r.statut != "ok"]
 
 
 def dedoublonner_site(resas):

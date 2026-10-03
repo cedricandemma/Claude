@@ -174,7 +174,7 @@ const pied = () => new Footer({ children: [
 
 // Annexe : détail des nuitées
 function detail() {
-  const L = [1600, 1750, 2588, 1850, 1150, 1150, 650, 1250, 800, 1250, 1000];
+  const L = [1600, 1750, 2238, 1850, 1150, 1150, 650, 1300, 800, 1300, 1250];
   const R = AlignmentType.RIGHT;
   const C = AlignmentType.CENTER;
   const tete = ["Canal", "N° réservation", "Client", "Chambre", "Arrivée", "Départ", "Nuits",
