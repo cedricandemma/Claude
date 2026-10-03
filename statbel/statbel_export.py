@@ -6,9 +6,11 @@ et de Booking.com (.xls).
 Usage :
     python3 statbel_export.py <dossier_exports> [--mois 2026-04] [--out <dossier_sortie>]
 
-Un fichier statbel_AAAA-MM.csv est produit par mois, au format du modèle Excel
-Statbel enregistré en CSV (séparateur point-virgule, sans ligne de titres) :
-    pays ; but du séjour ; date (aaaa-mm-jj) ; nuits ; personnes ; unités ; région BE
+Un fichier statbel_AAAA-MM.csv est produit par mois, au format du modèle
+Tourism_template_XBRL.xlsx enregistré en CSV (séparateur point-virgule, sans titres) :
+    pays ; but du séjour ; jour de départ (aaaa-mm-jj) ; nuits ; personnes ; unités
+Statbel rattache un séjour au mois de sa date de départ (check-out).
+L'option --avec-region ajoute une 7e colonne région BE, absente du modèle officiel.
 """
 import argparse
 import csv
@@ -20,13 +22,36 @@ from pathlib import Path
 
 import xlrd
 
-# Codes Statbel : à vérifier dans l'onglet CountryCode / la liste du modèle
-# Tourism_template_XBRL.xlsx. Modifier ici si Statbel utilise d'autres valeurs.
+# But du séjour : le modèle Statbel accepte 1, 2 ou 3 sans en donner le libellé.
+# Vérifier l'ordre de la liste déroulante "But du séjour" du websurvey.
 BUT_LOISIRS = "1"
 BUT_PROFESSIONNEL = "2"
+# Codes région : uniquement utilisés avec --avec-region, à confirmer auprès de Statbel.
 REGION_BRUXELLES = "1"
 REGION_FLANDRE = "2"
 REGION_WALLONIE = "3"
+# Clientèle belge sans code postal connu : 4 sur 5 en Flandre, 1 sur 5 en Wallonie.
+PART_WALLONIE_SANS_CP = 5
+
+# Onglet CountryCode du modèle Statbel ; tout autre code est déclaré XX (indéterminé).
+PAYS_STATBEL = set("""
+AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ
+BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM
+DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS
+GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN
+KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ
+MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM
+PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV
+SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI
+VN VU WF WS XX YE YT ZA ZM ZW
+""".split())
+ALIAS_PAYS = {"UK": "GB", "EL": "GR"}
+
+
+def code_pays(brut):
+    c = str(brut).strip().upper()
+    c = ALIAS_PAYS.get(c, c)
+    return c if c in PAYS_STATBEL else "XX"
 
 # Hypothèse pour le site web, qui n'exporte pas le nombre d'occupants :
 # chambres doubles, donc 2 personnes par chambre.
@@ -56,10 +81,10 @@ def lire_site(path):
                 continue
             arrivee = datetime.strptime(row["Check-in"], "%d/%m/%Y").date()
             depart = datetime.strptime(row["Check-out"], "%d/%m/%Y").date()
-            pays = row["Country"].strip().upper()
+            pays = code_pays(row["Country"])
             s = sejours.setdefault(row["ID"], {
                 "source": "site", "ref": row["ID"], "nom": f'{row["First Name"]} {row["Last Name"]}',
-                "pays": pays, "but": BUT_LOISIRS, "arrivee": arrivee,
+                "pays": pays, "but": BUT_LOISIRS, "depart": depart,
                 "nuits": (depart - arrivee).days, "unites": 0, "personnes": 0,
                 "region": region_depuis_code_postal(row["Postcode"]) if pays == "BE" else "",
             })
@@ -88,13 +113,13 @@ def lire_booking(path):
             continue
         arrivee = datetime.strptime(v["Arrivée"], "%Y-%m-%d").date()
         depart = datetime.strptime(v["Départ"], "%Y-%m-%d").date()
-        pays = str(v["Booker country"]).strip().upper()
+        pays = code_pays(v["Booker country"])
         motif = str(v["Motif du voyage"]).strip().lower()
         sejours.append({
             "source": "booking", "ref": str(v["Numéro de réservation"]).split(".")[0],
             "nom": v["Nom du client"], "pays": pays,
             "but": BUT_PROFESSIONNEL if motif == "affaires" else BUT_LOISIRS,
-            "arrivee": arrivee, "nuits": (depart - arrivee).days,
+            "depart": depart, "nuits": (depart - arrivee).days,
             "unites": int(v["Hébergements"] or 1), "personnes": int(v["Personnes"] or 2),
             "region": region_depuis_code_postal(str(v.get("Adresse", ""))) if pays == "BE" else "",
         })
@@ -106,6 +131,8 @@ def main():
     ap.add_argument("dossier")
     ap.add_argument("--mois", help="AAAA-MM ; par défaut tous les mois présents")
     ap.add_argument("--out", default=".")
+    ap.add_argument("--avec-region", action="store_true",
+                    help="ajoute la région BE en 7e colonne (hors modèle officiel)")
     args = ap.parse_args()
 
     sejours = []
@@ -117,24 +144,32 @@ def main():
 
     par_mois = defaultdict(list)
     for s in sejours:
-        par_mois[s["arrivee"].strftime("%Y-%m")].append(s)
+        par_mois[s["depart"].strftime("%Y-%m")].append(s)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     for mois in sorted(par_mois):
         if args.mois and mois != args.mois:
             continue
-        lignes = sorted(par_mois[mois], key=lambda s: s["arrivee"])
+        lignes = sorted(par_mois[mois], key=lambda s: (s["depart"], s["ref"]))
+        sans_cp = [s for s in lignes if s["pays"] == "BE" and not s["region"]]
+        for i, s in enumerate(sans_cp):
+            s["region_estimee"] = True
+            s["region"] = REGION_WALLONIE if i % PART_WALLONIE_SANS_CP == PART_WALLONIE_SANS_CP - 1 \
+                else REGION_FLANDRE
         with open(out / f"statbel_{mois}.csv", "w", encoding="utf-8", newline="") as f:
             w = csv.writer(f, delimiter=";")
             for s in lignes:
-                w.writerow([s["pays"], s["but"], s["arrivee"].isoformat(), s["nuits"],
-                            s["personnes"], s["unites"], s["region"]])
+                ligne = [s["pays"], s["but"], s["depart"].isoformat(), s["nuits"],
+                         s["personnes"], s["unites"]]
+                if args.avec_region:
+                    ligne.append(s["region"])
+                w.writerow(ligne)
         nuitees = sum(s["nuits"] * s["personnes"] for s in lignes)
         print(f"\n{mois} : {len(lignes)} séjours, {nuitees} nuitées -> statbel_{mois}.csv")
         for s in lignes:
-            alerte = "  <- région BE inconnue" if s["pays"] == "BE" and not s["region"] else ""
-            print(f'  {s["arrivee"]} {s["source"]:7} {s["ref"]:>11} {s["pays"]} '
+            alerte = "  <- région estimée" if s.get("region_estimee") else ""
+            print(f'  départ {s["depart"]} {s["source"]:7} {s["ref"]:>11} {s["pays"]} '
                   f'{s["nuits"]}n {s["personnes"]}p {s["unites"]}ch {s["nom"]}{alerte}')
 
 
