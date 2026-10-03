@@ -19,7 +19,7 @@ const PAYSAGE = 16838 - 2 * 900;
 
 const SOCIETE = {
   marque: "Chez Spoons",
-  nom: "Castremanne Management SPRL",
+  nom: "Castremanne Management SRL",
   adresse: ["Avenue Fernand Labby 9", "1390 Bossut-Gottechain", "Belgique"],
   tva: "BE 0843.031.552",
   rpm: "Nivelles",

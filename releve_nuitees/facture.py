@@ -50,8 +50,8 @@ def chambre(nom):
 
 
 def reference(r):
-    if r.canal == "Booking":
-        return r.ref
+    if r.numero:
+        return r.numero
     commande = r.ref.split("-")[0]
     return f"#{commande}" if len(commande) < 8 else "Sans n°"
 

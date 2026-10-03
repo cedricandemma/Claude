@@ -27,8 +27,12 @@ from openpyxl.utils import get_column_letter
 # Paramètres fiscaux
 DATE_PASSAGE_12 = date(2026, 3, 1)
 FIN_TRANSITOIRE = date(2026, 7, 1)
-# Le "Tarif" de l'export Booking est considéré TVA comprise. A confirmer sur un virement.
+# Le "Tarif" de l'export Booking est TVA comprise (confirmé par le propriétaire).
 BOOKING_TARIF_TTC = True
+# Colonnes optionnelles de l'export MotoPress, à cocher lors de l'export
+COLONNES_ID_SITE = ("ID", "Booking ID", "Booking", "Reservation ID", "Réservation")
+COLONNES_STATUT_SITE = ("Status", "Booking Status", "Statut")
+STATUTS_ANNULES_SITE = ("cancel", "annul", "abandon", "trash", "corbeille")
 
 
 @dataclass
@@ -46,6 +50,7 @@ class Resa:
     statut: str = "ok"
     nb_chambres: int = 1
     paye_en_ligne: bool = False
+    numero: str = ""
     remarques: list = field(default_factory=list)
 
     @property
@@ -95,19 +100,27 @@ def lire_booking(chemin):
             paiement=_texte(r.get("Statut du paiement")),
             statut=_texte(r.get("Statut")).lower() or "ok",
             nb_chambres=int(r.get("Hébergements") or 1),
+            numero=str(int(r["Numéro de réservation"])),
         ))
     return resas
 
 
 def lire_site(chemin):
     df = pd.read_csv(chemin)
+    col_id = next((c for c in COLONNES_ID_SITE if c in df.columns), None)
+    col_statut = next((c for c in COLONNES_STATUT_SITE if c in df.columns), None)
     resas = []
     for _, r in df.iterrows():
+        numero = _texte(r.get(col_id)).lstrip("#") if col_id else ""
+        if numero.endswith(".0"):
+            numero = numero[:-2]
+        statut = _texte(r.get(col_statut)).lower() if col_statut else ""
         details = _texte(r.get("Payment Details"))
         commande = details.split(",")[0].lstrip("#") if details.startswith("#") else ""
         arrivee = datetime.strptime(r["Check-in"], "%d/%m/%Y").date()
         chambre = _texte(r.get("Accommodation"))
-        ref = f"{commande}-{chambre}" if commande else f"{arrivee:%Y%m%d}-{chambre}"
+        cle = numero or commande
+        ref = f"{cle}-{chambre}" if cle else f"{arrivee:%Y%m%d}-{chambre}"
         paye = _montant(r.get("Paid"))
         if commande:
             paiement = details.split(",")[-1]
@@ -124,6 +137,8 @@ def lire_site(chemin):
             montant_ttc=round(_montant(r.get("Total")), 2),
             paiement=paiement if paye or not commande else f"{paiement} (non encaissé)",
             paye_en_ligne=bool(commande and paye),
+            numero=f"#{numero}" if numero else "",
+            statut="annulée" if any(x in statut for x in STATUTS_ANNULES_SITE) else "ok",
         ))
     return dedoublonner_site(resas)
 
@@ -305,7 +320,7 @@ def generer_excel(periode, lignes, regul, points, sortie):
         ("Rattachement au mois", "Mois de la première nuitée (décision du propriétaire)"),
         ("TVA hébergement", "12 % pour les séjours depuis le 01/03/2026, 6 % avant"),
         ("Régime transitoire", "Réservé avant le 01/03/2026 et arrivée avant le 01/07/2026 : 6 %"),
-        ("Montant Booking", "Colonne Tarif de l'export Booking, considérée TVA comprise"),
+        ("Montant Booking", "Colonne Tarif de l'export Booking, TVA comprise (confirmé)"),
         ("Montant site", "Colonne Total de l'export MotoPress, TVA comprise"),
         ("Commission Booking", "Information uniquement, hors facture (autoliquidation 21 % par le comptable)"),
         ("Annulations Booking", "Exclues des nuitées ; listées dans Points à vérifier si montant non nul"),
@@ -334,7 +349,7 @@ def main():
     points = []
     for r in du_mois:
         if r.statut != "ok":
-            points.append(f"Booking {r.ref} ({r.client}) au statut « {r.statut} » exclue des nuitées"
+            points.append(f"{r.canal} {r.numero or r.ref} ({r.client}) au statut « {r.statut} » exclue des nuitées"
                           + (f" ; montant de {r.montant_ttc:.2f} € à traiter avec le comptable" if r.montant_ttc else ""))
     for r in lignes:
         if r.nuits <= 0:
