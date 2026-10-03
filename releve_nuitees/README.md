@@ -50,4 +50,10 @@ python facture.py --du 2026-07 --au 2026-09 --booking "Arrivée du ....xls" --si
 
 La première page porte le logo, les coordonnées de la société, le récapitulatif par mois et les totaux. L'annexe en format paysage reprend le détail par réservation : canal, numéro de réservation, client, chambre, arrivée, départ, nuits, montant TVAC, taux de TVA, montant HTVA et TVA, avec un sous-total par mois.
 
+Le numéro de facture est un champ lié : le modifier en page 1, à l'intérieur de son cadre, met à jour le pied de page des annexes. `--valider` inscrit les mois, les réservations et la facture au registre partagé avec `releve.py` ; l'outil prévient ensuite si une nouvelle facture couvre un mois déjà facturé.
+
 Le rendu Word passe par `facture.js`, qui demande Node.js et le paquet npm `docx`. Le logo est dans `assets/logo_chez_spoons.png`.
+
+## Historique
+
+Avril à septembre 2026 : facturés (facture 2026-SB-XX du 30/09/2026, 9 371,89 € TVAC, numéro définitif attribué dans le logiciel comptable). Le prochain mois à traiter est octobre 2026.

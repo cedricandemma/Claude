@@ -156,10 +156,19 @@ def main():
     p.add_argument("--date", default=f"{date.today():%d/%m/%Y}", help="Date de facture JJ/MM/AAAA")
     p.add_argument("--conditions", default="Payé")
     p.add_argument("--sortie")
+    p.add_argument("--registre", default=str(ICI / "registre.json"))
+    p.add_argument("--valider", action="store_true",
+                   help="Inscrire les mois et les réservations facturés au registre")
     a = p.parse_args()
     au = a.au or a.du
 
-    mois = preparer(lire_booking(a.booking) + lire_site(a.site), a.du, au)
+    resas = lire_booking(a.booking) + lire_site(a.site)
+    registre_path = Path(a.registre)
+    if registre_path.exists():
+        deja = [m for m in json.loads(registre_path.read_text())["mois"] if a.du <= m <= au]
+        if deja:
+            print(f"Attention : mois déjà facturés dans cette période : {', '.join(deja)}")
+    mois = preparer(resas, a.du, au)
     periode = libelle_mois(a.du) if a.du == au else f"{libelle_mois(a.du)} à {libelle_mois(au)}"
     data = {
         "numero": a.numero,
@@ -180,6 +189,26 @@ def main():
     t = data["total"]
     print(f"{t['sejours']} séjours, {t['nuits']} nuits, {t['htva']:.2f} € HTVA + {t['tva']:.2f} € TVA "
           f"= {t['ttc']:.2f} € TVAC -> {sortie}")
+    if a.valider:
+        valider(Path(a.registre), resas, a.du, au, data)
+
+
+def valider(chemin, resas, du, au, data):
+    """Même registre que releve.py : les mois suivants signaleront ajouts, modifications et annulations."""
+    registre = json.loads(chemin.read_text()) if chemin.exists() else {"mois": [], "reservations": {}}
+    for m in data["mois"]:
+        if m["mois"] not in registre["mois"]:
+            registre["mois"].append(m["mois"])
+    registre["mois"].sort()
+    for r in resas:
+        if r.statut == "ok" and du <= r.mois <= au:
+            registre["reservations"][f"{r.canal}:{r.ref}"] = {"mois": r.mois, "ttc": r.montant_ttc, "nuits": r.nuits}
+    registre.setdefault("factures", []).append({
+        "numero": data["numero"], "date": data["date"], "du": du, "au": au,
+        "ttc": data["total"]["ttc"], "htva": data["total"]["htva"], "tva": data["total"]["tva"],
+    })
+    chemin.write_text(json.dumps(registre, indent=2, ensure_ascii=False))
+    print(f"Mois {du} à {au} inscrits au registre {chemin}")
 
 
 if __name__ == "__main__":

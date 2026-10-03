@@ -1,0 +1,288 @@
+{
+  "mois": [
+    "2026-04",
+    "2026-05",
+    "2026-06",
+    "2026-07",
+    "2026-08",
+    "2026-09"
+  ],
+  "reservations": {
+    "Booking:6314411064": {
+      "mois": "2026-04",
+      "ttc": 204.38,
+      "nuits": 2
+    },
+    "Booking:5144394100": {
+      "mois": "2026-04",
+      "ttc": 125.0,
+      "nuits": 1
+    },
+    "Booking:6995038066": {
+      "mois": "2026-04",
+      "ttc": 107.05,
+      "nuits": 1
+    },
+    "Booking:5865916559": {
+      "mois": "2026-05",
+      "ttc": 204.38,
+      "nuits": 2
+    },
+    "Booking:5721214858": {
+      "mois": "2026-05",
+      "ttc": 330.0,
+      "nuits": 3
+    },
+    "Booking:5030544135": {
+      "mois": "2026-05",
+      "ttc": 437.95,
+      "nuits": 4
+    },
+    "Booking:5058664127": {
+      "mois": "2026-05",
+      "ttc": 235.0,
+      "nuits": 2
+    },
+    "Booking:5594325256": {
+      "mois": "2026-05",
+      "ttc": 645.0,
+      "nuits": 3
+    },
+    "Booking:5270503922": {
+      "mois": "2026-05",
+      "ttc": 121.65,
+      "nuits": 1
+    },
+    "Booking:5361511433": {
+      "mois": "2026-05",
+      "ttc": 116.79,
+      "nuits": 1
+    },
+    "Booking:5865912254": {
+      "mois": "2026-06",
+      "ttc": 223.84,
+      "nuits": 2
+    },
+    "Booking:5609865999": {
+      "mois": "2026-06",
+      "ttc": 228.71,
+      "nuits": 1
+    },
+    "Booking:5978135956": {
+      "mois": "2026-06",
+      "ttc": 233.57,
+      "nuits": 2
+    },
+    "Booking:6854245588": {
+      "mois": "2026-06",
+      "ttc": 223.84,
+      "nuits": 2
+    },
+    "Booking:5550719286": {
+      "mois": "2026-06",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5298930931": {
+      "mois": "2026-06",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5048940068": {
+      "mois": "2026-06",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5452199411": {
+      "mois": "2026-06",
+      "ttc": 116.79,
+      "nuits": 1
+    },
+    "Booking:5695936839": {
+      "mois": "2026-06",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6994960916": {
+      "mois": "2026-06",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5821992933": {
+      "mois": "2026-07",
+      "ttc": 235.0,
+      "nuits": 1
+    },
+    "Booking:5772626707": {
+      "mois": "2026-07",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6646961230": {
+      "mois": "2026-07",
+      "ttc": 116.79,
+      "nuits": 1
+    },
+    "Booking:6157374205": {
+      "mois": "2026-07",
+      "ttc": 116.79,
+      "nuits": 1
+    },
+    "Booking:6474635843": {
+      "mois": "2026-08",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6917093044": {
+      "mois": "2026-08",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5015383826": {
+      "mois": "2026-09",
+      "ttc": 126.52,
+      "nuits": 1
+    },
+    "Booking:5495705016": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6921764621": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6240581551": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:6055032043": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5571069891": {
+      "mois": "2026-09",
+      "ttc": 238.44,
+      "nuits": 1
+    },
+    "Booking:5573110378": {
+      "mois": "2026-09",
+      "ttc": 126.52,
+      "nuits": 1
+    },
+    "Booking:5683728721": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Booking:5449307746": {
+      "mois": "2026-09",
+      "ttc": 111.92,
+      "nuits": 1
+    },
+    "Site:30324-Silver Spoon 1": {
+      "mois": "2026-04",
+      "ttc": 476.0,
+      "nuits": 5
+    },
+    "Site:30326-Mustard Spoon 1": {
+      "mois": "2026-04",
+      "ttc": 315.0,
+      "nuits": 3
+    },
+    "Site:30410-Mustard Spoon 1": {
+      "mois": "2026-04",
+      "ttc": 210.0,
+      "nuits": 2
+    },
+    "Site:30430-Mustard Spoon 1": {
+      "mois": "2026-05",
+      "ttc": 115.0,
+      "nuits": 1
+    },
+    "Site:30433-Mustard Spoon 1": {
+      "mois": "2026-04",
+      "ttc": 400.0,
+      "nuits": 4
+    },
+    "Site:30435-Silver Spoon 1": {
+      "mois": "2026-05",
+      "ttc": 230.0,
+      "nuits": 2
+    },
+    "Site:30516-Mustard Spoon 1": {
+      "mois": "2026-06",
+      "ttc": 105.0,
+      "nuits": 1
+    },
+    "Site:30523-Silver Spoon 1": {
+      "mois": "2026-04",
+      "ttc": 110.0,
+      "nuits": 1
+    },
+    "Site:30530-Silver Spoon 1": {
+      "mois": "2026-05",
+      "ttc": 120.0,
+      "nuits": 1
+    },
+    "Site:30567-Mustard Spoon 1": {
+      "mois": "2026-06",
+      "ttc": 105.0,
+      "nuits": 1
+    },
+    "Site:30567-Silver Spoon 1": {
+      "mois": "2026-06",
+      "ttc": 110.0,
+      "nuits": 1
+    },
+    "Site:30571-Mustard Spoon 1": {
+      "mois": "2026-05",
+      "ttc": 105.0,
+      "nuits": 1
+    },
+    "Site:30625-Silver Spoon 1": {
+      "mois": "2026-09",
+      "ttc": 110.0,
+      "nuits": 1
+    },
+    "Site:30628-Mustard Spoon 1": {
+      "mois": "2026-08",
+      "ttc": 105.0,
+      "nuits": 1
+    },
+    "Site:30645-Silver Spoon 1": {
+      "mois": "2026-09",
+      "ttc": 220.0,
+      "nuits": 2
+    },
+    "Site:30675-Silver Spoon 1": {
+      "mois": "2026-09",
+      "ttc": 230.0,
+      "nuits": 2
+    },
+    "Site:30679-Silver Spoon 1": {
+      "mois": "2026-09",
+      "ttc": 115.0,
+      "nuits": 1
+    },
+    "Site:30679-Mustard Spoon 1": {
+      "mois": "2026-09",
+      "ttc": 110.0,
+      "nuits": 1
+    }
+  },
+  "factures": [
+    {
+      "numero": "2026-SB-XX",
+      "date": "30/09/2026",
+      "du": "2026-04",
+      "au": "2026-09",
+      "ttc": 9371.89,
+      "htva": 8367.77,
+      "tva": 1004.12
+    }
+  ]
+}
