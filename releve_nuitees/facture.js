@@ -215,8 +215,6 @@ function enteteAnnexe() {
     cell(para(image(52)), 1100, { borders: sansBord, margins: { left: 0 } }),
     cell([
       para(run("Détail des nuitées", { size: 32, bold: true, color: BLEU })),
-      para(run(`Annexe à la facture n° ${d.numero} du ${d.date}  ·  ${d.periode}  ·  Clients divers`,
-        { size: 16, color: GRIS }), { spacing: { before: 60 } }),
     ], PAYSAGE - 1100, { borders: sansBord }),
   ] })]);
 }
