@@ -1,0 +1,5 @@
+# Exports et relevés : données personnelles des clients
+*.xls
+*.xlsx
+*.csv
+__pycache__/
