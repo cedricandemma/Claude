@@ -7,6 +7,8 @@ const {
 
 const [, , jsonPath, sortie] = process.argv;
 const d = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+// Marqueur remplacé par facture.py par un champ Word lié : modifier le numéro en page 1 met à jour les annexes.
+const NUM = "\u27E6NUM\u27E7";
 
 const POLICE = "Century Gothic";
 const BLEU = "0A548B";
@@ -77,7 +79,7 @@ const espace = (pts) => para(run(""), { spacing: { after: pts * 20 } });
 // Page 1 : facture
 function entete() {
   const meta = [
-    ["N° de facture", d.numero],
+    ["N° de facture", NUM],
     ["Date de facture", d.date],
     ["Période", d.periode],
     ["Conditions de paiement", d.conditions],
@@ -160,8 +162,10 @@ function mentions() {
   ];
 }
 
-const pied = () => new Footer({ children: [
+const pied = (annexe = false) => new Footer({ children: [
   para(run(""), { border: { top: { style: BorderStyle.SINGLE, size: 4, color: LIGNE, space: 6 } } }),
+  ...(annexe ? [para([run("Annexe à la facture n° ", { size: 14, color: GRIS }),
+    run(NUM, { size: 14, color: GRIS, bold: true })], { alignment: AlignmentType.CENTER })] : []),
   para(run(`${SOCIETE.nom}  ·  ${SOCIETE.adresse.slice(0, 2).join(", ")}  ·  TVA ${SOCIETE.tva}  ·  RPM ${SOCIETE.rpm}`,
     { size: 14, color: GRIS }), { alignment: AlignmentType.CENTER }),
   para([
@@ -244,7 +248,7 @@ const doc = new Document({
     {
       properties: { page: { size: { width: 11906, height: 16838, orientation: PageOrientation.LANDSCAPE },
         margin: { top: 700, bottom: 1200, left: 900, right: 900, footer: 450 } } },
-      footers: { default: pied() },
+      footers: { default: pied(true) },
       children: [enteteAnnexe(), espace(10), detail()],
     },
   ],

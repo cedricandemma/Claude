@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import tempfile
+import zipfile
 from datetime import date, datetime
 from pathlib import Path
 
@@ -90,6 +91,61 @@ def preparer(resas, du, au):
     return mois
 
 
+MARQUEUR = "\u27e6NUM\u27e7"
+STORE_ID = "{6B2E1F4A-3C5D-4E8F-9A1B-2C3D4E5F6A7B}"
+NS_FACTURE = "urn:chezspoons:facture"
+
+
+def lier_numero(chemin, numero):
+    """Remplace le marqueur par des contrôles de contenu Word liés à une même donnée XML.
+
+    Modifier le numéro dans l'un d'eux (page 1) met à jour tous les autres (pieds de page des annexes).
+    """
+    run = re.compile(r'<w:r>(<w:rPr>(?:(?!</w:rPr>).)*</w:rPr>)?<w:t xml:space="preserve">' + MARQUEUR + r'</w:t></w:r>')
+    compteur = iter(range(900001, 999999))
+
+    def sdt(m):
+        rpr = m.group(1) or ""
+        return (f'<w:sdt><w:sdtPr>{rpr}<w:alias w:val="Numéro de facture"/><w:tag w:val="numero_facture"/>'
+                f'<w:id w:val="{next(compteur)}"/>'
+                f'<w:dataBinding w:prefixMappings="xmlns:ns0=\'{NS_FACTURE}\'" '
+                f'w:xpath="/ns0:facture[1]/ns0:numero[1]" w:storeItemID="{STORE_ID}"/><w:text/></w:sdtPr>'
+                f'<w:sdtContent><w:r>{rpr}<w:t xml:space="preserve">{numero}</w:t></w:r></w:sdtContent></w:sdt>')
+
+    with zipfile.ZipFile(chemin) as z:
+        parts = {n: z.read(n) for n in z.namelist()}
+    for n in list(parts):
+        if n.startswith("word/") and n.endswith(".xml") and MARQUEUR.encode() in parts[n]:
+            parts[n] = run.sub(sdt, parts[n].decode("utf-8")).encode("utf-8")
+            assert MARQUEUR.encode() not in parts[n], f"marqueur non remplacé dans {n}"
+    parts["customXml/item1.xml"] = (f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                                    f'<facture xmlns="{NS_FACTURE}"><numero>{numero}</numero></facture>').encode()
+    parts["customXml/itemProps1.xml"] = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+        f'<ds:datastoreItem ds:itemID="{STORE_ID}" '
+        'xmlns:ds="http://schemas.openxmlformats.org/officeDocument/2006/customXml">'
+        f'<ds:schemaRefs><ds:schemaRef ds:uri="{NS_FACTURE}"/></ds:schemaRefs></ds:datastoreItem>').encode()
+    parts["customXml/_rels/item1.xml.rels"] = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/'
+        'customXmlProps" Target="itemProps1.xml"/></Relationships>').encode()
+    rels = parts["word/_rels/document.xml.rels"].decode()
+    rels = rels.replace("</Relationships>",
+                        '<Relationship Id="rIdFactureXml" Type="http://schemas.openxmlformats.org/officeDocument/'
+                        '2006/relationships/customXml" Target="../customXml/item1.xml"/></Relationships>')
+    parts["word/_rels/document.xml.rels"] = rels.encode()
+    ct = parts["[Content_Types].xml"].decode()
+    if 'Extension="xml"' not in ct:
+        ct = ct.replace("<Default ", '<Default Extension="xml" ContentType="application/xml"/><Default ', 1)
+    ct = ct.replace("</Types>", '<Override PartName="/customXml/itemProps1.xml" '
+                    'ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/></Types>')
+    parts["[Content_Types].xml"] = ct.encode()
+    with zipfile.ZipFile(chemin, "w", zipfile.ZIP_DEFLATED) as z:
+        for n in ["[Content_Types].xml"] + [n for n in parts if n != "[Content_Types].xml"]:
+            z.writestr(n, parts[n])
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--du", required=True, help="Premier mois facturé, AAAA-MM")
@@ -120,6 +176,7 @@ def main():
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
     subprocess.run(["node", str(ICI / "facture.js"), f.name, sortie], check=True)
+    lier_numero(sortie, a.numero)
     t = data["total"]
     print(f"{t['sejours']} séjours, {t['nuits']} nuits, {t['htva']:.2f} € HTVA + {t['tva']:.2f} € TVA "
           f"= {t['ttc']:.2f} € TVAC -> {sortie}")
