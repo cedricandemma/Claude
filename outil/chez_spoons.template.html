@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chez Spoons Facturation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap">
+<script>/*XLSX*/</script>
+<style>
+/* Mise en page : colonne de réglages à gauche, résultats à droite, aperçu de facture sur papier */
+:root {
+  --bg: #f3f6f9;
+  --surface: #ffffff;
+  --fg: #16263a;
+  --muted: #5d6b7c;
+  --line: #d5dee7;
+  --accent: #0a548b;
+  --accent-soft: #e7eff6;
+  --ok: #1d7a4d;
+  --warn: #a35a00;
+  --warn-soft: #fff3e0;
+  --font: "Jost", "Century Gothic", "Avenir Next", "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1822; --surface: #172331; --fg: #e6edf4; --muted: #9aabbd; --line: #2a3a4c;
+    --accent: #6fb0e3; --accent-soft: #1d3247; --ok: #5cc28e; --warn: #f0a94b; --warn-soft: #3a2a14;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1822; --surface: #172331; --fg: #e6edf4; --muted: #9aabbd; --line: #2a3a4c;
+  --accent: #6fb0e3; --accent-soft: #1d3247; --ok: #5cc28e; --warn: #f0a94b; --warn-soft: #3a2a14;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font);
+  padding-block: 0 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-variant-numeric: tabular-nums;
+}
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.app {
+  max-width: 1280px; margin: 0 auto; display: flex; align-items: center; gap: 14px;
+  padding-block: 20px; border-bottom: 1px solid var(--line);
+}
+header.app img { width: 38px; height: auto; border-radius: 6px; background: #fff; padding: 3px; }
+header.app h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: .01em; }
+header.app p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+main { max-width: 1280px; margin: 24px auto 0; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+.reglages { display: grid; gap: 22px; position: sticky; top: 16px; }
+@media (max-width: 900px) { .reglages { position: static; } }
+.bloc h2 { margin: 0 0 10px; font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .09em; color: var(--accent); }
+
+.depot {
+  border: 1.5px dashed var(--line); border-radius: 10px; background: var(--surface);
+  padding: 22px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.depot:hover, .depot.survol { border-color: var(--accent); background: var(--accent-soft); }
+.depot strong { display: block; font-weight: 600; }
+.depot span { color: var(--muted); font-size: .88rem; }
+.fichiers { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.fichiers li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: .86rem; }
+.fichiers .nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fichiers .nom small { display: block; color: var(--muted); }
+.puce { font-size: .72rem; font-weight: 600; letter-spacing: .04em; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.puce.erreur { background: var(--warn-soft); color: var(--warn); }
+.retirer { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 6px; font-size: 1.1rem; line-height: 1; }
+
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.champs.un { grid-template-columns: 1fr; }
+label { display: grid; gap: 4px; font-size: .84rem; color: var(--muted); }
+input[type="date"], input[type="text"] {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--fg);
+}
+.raccourcis { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.lien { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 3px 11px; font-size: .82rem; cursor: pointer; color: var(--fg); }
+.lien:hover { border-color: var(--accent); color: var(--accent); }
+.aide { margin: 8px 0 0; font-size: .8rem; color: var(--muted); }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; padding: 9px 16px; cursor: pointer; font-weight: 500; border: 1px solid var(--accent); }
+.btn.plein { background: var(--accent); color: var(--surface); }
+.btn.contour { background: var(--surface); color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.resultats { min-width: 0; display: grid; gap: 20px; }
+.vide { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 32px 28px; }
+.vide h2 { margin: 0 0 8px; font-size: 1.15rem; font-weight: 600; text-wrap: balance; }
+.vide ol { margin: 12px 0 0; padding-left: 20px; color: var(--muted); display: grid; gap: 6px; max-width: 62ch; }
+
+.chiffres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+@media (max-width: 640px) { .chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.chiffres div { background: var(--surface); padding: 14px 16px; }
+.chiffres dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.chiffres dd { margin: 2px 0 0; font-size: 1.35rem; font-weight: 600; }
+.chiffres dd small { font-size: .8rem; font-weight: 400; color: var(--muted); }
+
+.onglets { display: flex; gap: 4px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.onglets button { border: 0; background: none; padding: 10px 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500; }
+.onglets button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.onglets .compteur { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 99px; font-size: .74rem; background: var(--warn-soft); color: var(--warn); }
+
+.barre { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.barre p { margin: 0; color: var(--muted); font-size: .88rem; max-width: 60ch; }
+.alerte { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 14px; font-size: .9rem; }
+
+.defile { overflow-x: auto; }
+.papier-zone { background: var(--line); border-radius: 12px; padding: 24px; display: grid; gap: 24px; justify-items: start; overflow-x: auto; }
+
+.mois-statbel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mois-statbel header { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.mois-statbel h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.mois-statbel h3 small { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left: 6px; }
+table.grille { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 760px; }
+table.grille th { text-align: left; font-weight: 500; color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+table.grille td { padding: 7px 12px; border-bottom: 1px solid var(--line); }
+table.grille td:nth-child(2), table.grille td:nth-child(3), table.grille td:nth-child(7) { white-space: nowrap; }
+table.grille tr:last-child td { border-bottom: 0; }
+table.grille .num { text-align: right; }
+.estimee { color: var(--warn); font-size: .78rem; }
+.source { color: var(--muted); font-size: .8rem; }
+
+ul.points { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+ul.points li { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 10px 14px; font-size: .9rem; }
+ul.points li.alerte-pt { border-left-color: var(--warn); }
+
+/* Facture : papier toujours blanc, reprend la mise en page Word de Chez Spoons */
+.feuille {
+  --p-bleu: #0a548b; --p-bleu-clair: #e7eff6; --p-gris: #6b7280; --p-ligne: #d5dee7; --p-zebre: #f7f9fb; --p-encre: #1f2937;
+  background: #fff; color: var(--p-encre); font-family: "Century Gothic", "Jost", "Avenir Next", sans-serif; font-size: 9pt; line-height: 1.35;
+  box-shadow: 0 2px 14px rgba(10, 40, 70, .18); flex: none;
+}
+.feuille.portrait { width: 210mm; min-height: 297mm; padding: 14mm 17.6mm 12mm; display: flex; flex-direction: column; }
+.feuille.paysage { width: 297mm; min-height: 210mm; padding: 12mm 15.9mm 12mm; }
+.f-entete { display: flex; justify-content: space-between; align-items: flex-end; }
+.f-entete img { width: 31mm; height: auto; }
+.f-meta { text-align: right; display: grid; gap: 3px; }
+.f-titre { font-size: 26pt; font-weight: 700; color: var(--p-bleu); letter-spacing: .16em; margin-bottom: 8px; }
+.f-meta span { color: var(--p-gris); margin-right: 8px; }
+.f-meta b { font-weight: 700; }
+.f-trait { border: 0; border-top: 1.6pt solid var(--p-bleu); margin: 8mm 0 7mm; }
+.f-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+.f-parties > div { padding: 4mm 0; }
+.f-parties .client { background: var(--p-bleu-clair); padding: 4mm 5mm; }
+.f-label { font-size: 7pt; font-weight: 700; color: var(--p-bleu); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 5px; }
+.f-nom { font-size: 10pt; font-weight: 700; }
+.f-petit { color: var(--p-gris); font-size: 8pt; margin-top: 4px; }
+.f-section { margin-top: 9mm; }
+table.f-tab { width: 100%; border-collapse: collapse; }
+table.f-tab th { background: var(--p-bleu); color: #fff; font-weight: 700; font-size: 8pt; padding: 5px 7px; text-align: left; }
+table.f-tab td { padding: 5px 7px; border-bottom: .5pt solid var(--p-ligne); }
+table.f-tab .d { text-align: right; }
+table.f-tab .c { text-align: center; }
+table.f-totaux { margin: 6mm 0 0 auto; width: 80mm; border-collapse: collapse; }
+table.f-totaux td { padding: 5px 7px; border-bottom: .5pt solid var(--p-ligne); }
+table.f-totaux td:first-child { color: var(--p-gris); }
+table.f-totaux td:last-child { text-align: right; }
+table.f-totaux tr.total td { background: var(--p-bleu); color: #fff; font-weight: 700; font-size: 10pt; border: 0; }
+.f-infos p { margin: 0 0 3px; color: var(--p-gris); font-size: 8pt; }
+.f-pied { margin-top: auto; padding-top: 4mm; border-top: .5pt solid var(--p-ligne); text-align: center; color: var(--p-gris); font-size: 7pt; line-height: 1.6; }
+.f-annexe-tete { display: flex; align-items: center; gap: 5mm; margin-bottom: 5mm; }
+.f-annexe-tete img { width: 14mm; height: auto; }
+.f-annexe-tete h2 { margin: 0; color: var(--p-bleu); font-size: 16pt; }
+.f-annexe-tete p { margin: 0; color: var(--p-gris); font-size: 8pt; }
+table.f-detail { font-size: 8pt; }
+table.f-detail th { font-size: 7.5pt; }
+table.f-detail tr.mois td { background: var(--p-bleu-clair); color: var(--p-bleu); font-weight: 700; border: 0; padding-top: 6px; }
+table.f-detail tr.zebre td { background: var(--p-zebre); }
+table.f-detail tr.sous-total td { font-weight: 700; border-bottom: .8pt solid var(--p-bleu); }
+table.f-detail tr.grand-total td { background: var(--p-bleu); color: #fff; font-weight: 700; border: 0; }
+table.f-detail tr { break-inside: avoid; }
+
+@page { size: A4 portrait; margin: 0; }
+@page annexe { size: A4 landscape; margin: 11mm 0; }
+@media print {
+  body { background: #fff; padding: 0; }
+  header.app, .reglages, .chiffres, .onglets, .barre, #vue-statbel, #vue-points, .alerte { display: none !important; }
+  main { display: block; margin: 0; max-width: none; }
+  .resultats, #sortie, #vue-facture { display: block !important; }
+  .papier-zone { background: none; padding: 0; display: block; border-radius: 0; overflow: visible; }
+  .feuille { box-shadow: none; }
+  #vue-facture { margin: 0 !important; gap: 0 !important; }
+  .feuille.portrait { break-after: page; display: block; position: relative; height: 297mm; min-height: 0; overflow: hidden; }
+  .feuille.portrait .f-pied { position: absolute; left: 17.6mm; right: 17.6mm; bottom: 10mm; }
+  .feuille.paysage { page: annexe; padding-block: 0; min-height: 0; }
+  table.f-tab thead { display: table-header-group; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="app">
+  <img src="LOGO_DATA_URI" alt="Chez Spoons">
+  <div>
+    <h1>Facturation et Statbel</h1>
+    <p>Exports Booking.com et chezspoons.com vers la facture Clients divers et la déclaration des nuitées</p>
+  </div>
+</header>
+
+<main>
+  <aside class="reglages">
+    <section class="bloc">
+      <h2>Exports de réservations</h2>
+      <div class="depot" id="depot" tabindex="0" role="button" aria-label="Ajouter des fichiers d'export">
+        <strong>Déposez les fichiers ici</strong>
+        <span>ou cliquez pour les choisir · Booking .xls, site .csv</span>
+      </div>
+      <input type="file" id="choix" multiple accept=".xls,.xlsx,.csv" hidden>
+      <ul class="fichiers" id="fichiers"></ul>
+      <p class="aide">Les fichiers restent sur votre ordinateur, rien n'est envoyé sur internet.</p>
+    </section>
+
+    <section class="bloc">
+      <h2>Période</h2>
+      <div class="champs">
+        <label for="du">Du<input type="date" id="du"></label>
+        <label for="au">Au<input type="date" id="au"></label>
+      </div>
+      <div class="raccourcis" id="raccourcis"></div>
+      <p class="aide">Facture : séjours arrivés dans la période. Statbel : séjours partis dans la période, un fichier par mois.</p>
+    </section>
+
+    <section class="bloc">
+      <h2>Facture</h2>
+      <div class="champs">
+        <label for="numero">Numéro<input type="text" id="numero" placeholder="2026-SB-04"></label>
+        <label for="datefact">Date<input type="date" id="datefact"></label>
+      </div>
+      <div class="champs un" style="margin-top:10px">
+        <label for="conditions">Conditions de paiement<input type="text" id="conditions" value="Payé"></label>
+      </div>
+    </section>
+  </aside>
+
+  <section class="resultats" id="resultats">
+    <div class="vide" id="vide">
+      <h2>Déposez les exports du mois pour obtenir la facture et le fichier Statbel</h2>
+      <ol>
+        <li>Extranet Booking : Réservations, export .xls. Prenez quelques jours avant le début de la période, pour les séjours à cheval sur deux mois.</li>
+        <li>WordPress : export MotoPress Hotel Booking en .csv, sur la même plage de dates.</li>
+        <li>Choisissez la période et le numéro de facture, puis imprimez la facture en PDF et téléchargez le CSV Statbel.</li>
+      </ol>
+    </div>
+
+    <div id="sortie" hidden>
+      <dl class="chiffres" id="chiffres"></dl>
+      <div class="onglets" role="tablist" style="margin-top:20px">
+        <button role="tab" id="t-facture" aria-selected="true" data-vue="vue-facture">Facture</button>
+        <button role="tab" id="t-statbel" aria-selected="false" data-vue="vue-statbel">Statbel</button>
+        <button role="tab" id="t-points" aria-selected="false" data-vue="vue-points">Points à vérifier <span class="compteur" id="nb-points" hidden></span></button>
+      </div>
+
+      <div id="vue-facture" style="display:grid;gap:16px;margin-top:16px">
+        <div class="barre">
+          <p id="info-facture"></p>
+          <button class="btn plein" id="imprimer">Imprimer ou enregistrer en PDF</button>
+        </div>
+        <div class="alerte" id="alerte-facture" hidden></div>
+        <div class="papier-zone" id="papier"></div>
+      </div>
+
+      <div id="vue-statbel" hidden style="margin-top:16px">
+        <div class="barre" style="margin-bottom:16px">
+          <p>Le fichier suit le format accepté par l'upload du websurvey : 7 colonnes, point-virgule, date aaaa-mm-jj. Le tableau reprend les libellés des listes, pour une saisie manuelle.</p>
+        </div>
+        <div id="statbel" style="display:grid;gap:16px"></div>
+      </div>
+
+      <div id="vue-points" hidden style="margin-top:16px">
+        <ul class="points" id="points"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/*CORE*/
+</script>
+<script>
+const LOGO = "LOGO_DATA_URI";
+const SOCIETE = {
+  marque: "Chez Spoons", nom: "Castremanne Management SRL",
+  adresse: ["Avenue Fernand Labby 9", "1390 Bossut-Gottechain", "Belgique"],
+  tva: "BE 0843.031.552", rpm: "Nivelles", iban: "BE62 1030 8586 3761", bic: "AXABBE22",
+  tel: "+32 (0)492 82 29 23", email: "hello@chezspoons.com",
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const eur = (x) => {
+  const [e, c] = Math.abs(x).toFixed(2).split(".");
+  return `${x < 0 ? "-" : ""}${e.replace(/\B(?=(\d{3})+(?!\d))/g, " ")},${c} €`;
+};
+const pct = (t) => `${Math.round(t * 100)} %`;
+const parseInputDate = (v) => (v ? mkDate(...v.split("-")) : null);
+
+// État : fichiers chargés, chacun avec ses réservations
+let fichiers = [];
+
+// Lecture d'un fichier déposé
+async function lireFichier(f) {
+  const nom = f.name;
+  try {
+    let lignes;
+    if (/\.csv$/i.test(nom)) {
+      lignes = parseCSV(await f.text());
+    } else {
+            const buf = new Uint8Array(await f.arrayBuffer());
+      let wb;
+      try { wb = XLSX.read(buf, { type: "array" }); }
+      catch (e) { wb = XLSX.read(buf.subarray(512), { type: "array" }); } // export Booking au conteneur abîmé
+      lignes = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+    }
+    const type = typeExport(lignes);
+    if (!type) throw new Error("Ni un export Booking.com, ni un export MotoPress");
+    const resas = type === "booking" ? lireBooking(lignes) : lireSite(lignes);
+    return { nom, type, resas };
+  } catch (e) {
+    return { nom, type: null, resas: [], erreur: e.message };
+  }
+}
+
+async function ajouter(liste) {
+  for (const f of liste) {
+    const lu = await lireFichier(f);
+    fichiers = fichiers.filter((x) => x.nom !== lu.nom).concat(lu);
+  }
+  if (!$("du").value) proposerPeriode();
+  afficher();
+}
+
+function proposerPeriode() {
+  // Par défaut : dernier mois complet couvert par les arrivées
+  const dates = fichiers.flatMap((f) => f.resas.map((r) => r.arrivee)).filter(Boolean).sort((a, b) => a - b);
+  if (!dates.length) return;
+  const derniere = dates[dates.length - 1];
+  choisirMois(derniere.getUTCFullYear(), derniere.getUTCMonth());
+}
+function choisirMois(a, m) {
+  $("du").value = isoDate(new Date(Date.UTC(a, m, 1)));
+  $("au").value = isoDate(new Date(Date.UTC(a, m + 1, 0)));
+}
+
+function rendreFichiers() {
+  $("fichiers").innerHTML = fichiers.map((f, i) => {
+    if (f.erreur) return `<li><span class="puce erreur">Illisible</span><span class="nom">${esc(f.nom)}<small>${esc(f.erreur)}</small></span><button class="retirer" data-i="${i}" aria-label="Retirer ${esc(f.nom)}">×</button></li>`;
+    const arr = f.resas.map((r) => r.arrivee).filter(Boolean).sort((a, b) => a - b);
+    const plage = arr.length ? `${dateFr(arr[0])} au ${dateFr(arr[arr.length - 1])}` : "aucune réservation";
+    return `<li><span class="puce">${f.type === "booking" ? "Booking" : "Site"}</span><span class="nom">${esc(f.nom)}<small>${f.resas.length} lignes · arrivées du ${plage}</small></span><button class="retirer" data-i="${i}" aria-label="Retirer ${esc(f.nom)}">×</button></li>`;
+  }).join("");
+}
+
+function rendreRaccourcis() {
+  const ref = parseInputDate($("du").value) || new Date();
+  const a = ref.getUTCFullYear(), m = ref.getUTCMonth();
+  const mois = [-1, 0, 1].map((d) => new Date(Date.UTC(a, m + d, 1)));
+  $("raccourcis").innerHTML = mois.map((d) =>
+    `<button class="lien" data-a="${d.getUTCFullYear()}" data-m="${d.getUTCMonth()}">${libelleMois(isoDate(d).slice(0, 7))}</button>`).join("");
+}
+
+// Factures déjà émises, mémorisées dans ce navigateur pour éviter de facturer deux fois
+const CLE_HISTO = "chezspoons-factures";
+const HISTO_INITIAL = [{ numero: "2026-SB-XX", du: "2026-04-01", au: "2026-09-30", ttc: 9371.89 }];
+function lireHisto() {
+  try { return JSON.parse(localStorage.getItem(CLE_HISTO)) || HISTO_INITIAL; } catch (e) { return HISTO_INITIAL; }
+}
+
+function afficher() {
+  rendreFichiers();
+  rendreRaccourcis();
+  const resas = fusionner(fichiers.map((f) => f.resas));
+  const du = parseInputDate($("du").value), au = parseInputDate($("au").value);
+  const pret = resas.length && du && au && du <= au;
+  $("vide").hidden = Boolean(pret);
+  $("sortie").hidden = !pret;
+  if (!pret) return;
+
+  const facture = preparerFacture(resas, du, au);
+  const statbel = preparerStatbel(resas, du, au);
+  const points = controles(resas, du, au);
+  const types = new Set(fichiers.filter((f) => !f.erreur).map((f) => f.type));
+  if (!types.has("booking")) points.unshift({ niveau: "alerte", texte: "Aucun export Booking.com chargé : la facture et Statbel ne reprennent que le site." });
+  if (!types.has("site")) points.unshift({ niveau: "alerte", texte: "Aucun export du site chargé : la facture et Statbel ne reprennent que Booking.com." });
+
+  const nuiteesStatbel = statbel.reduce((t, m) => t + m.nuitees, 0);
+  const sejoursStatbel = statbel.reduce((t, m) => t + m.lignes.length, 0);
+  $("chiffres").innerHTML = `
+    <div><dt>Facture TVAC</dt><dd>${eur(facture.total.ttc)}</dd></div>
+    <div><dt>Séjours facturés</dt><dd>${facture.total.sejours} <small>${facture.total.nuits} nuits</small></dd></div>
+    <div><dt>Séjours Statbel</dt><dd>${sejoursStatbel} <small>${statbel.length} mois</small></dd></div>
+    <div><dt>Nuitées Statbel</dt><dd>${nuiteesStatbel} <small>nuits × personnes</small></dd></div>`;
+
+  rendreFacture(facture, du, au);
+  rendreStatbel(statbel);
+  $("points").innerHTML = points.length
+    ? points.map((p) => `<li class="${p.niveau === "alerte" ? "alerte-pt" : ""}">${esc(p.texte)}</li>`).join("")
+    : "<li>Rien à signaler sur cette période.</li>";
+  const nbAlertes = points.filter((p) => p.niveau === "alerte").length;
+  $("nb-points").hidden = !nbAlertes;
+  $("nb-points").textContent = nbAlertes;
+}
+
+function libellePeriode(du, au) {
+  const mDu = moisDe(du), mAu = moisDe(au);
+  const finDuMois = new Date(Date.UTC(au.getUTCFullYear(), au.getUTCMonth() + 1, 0));
+  const moisEntiers = du.getUTCDate() === 1 && +au === +finDuMois;
+  if (moisEntiers) return mDu === mAu ? libelleMois(mDu) : `${libelleMois(mDu)} à ${libelleMois(mAu)}`;
+  return `du ${dateFr(du)} au ${dateFr(au)}`;
+}
+
+function rendreFacture(f, du, au) {
+  const numero = $("numero").value.trim() || "À compléter";
+  const dateFact = parseInputDate($("datefact").value);
+  const periode = libellePeriode(du, au);
+  const conditions = $("conditions").value.trim() || "Payé";
+  $("info-facture").textContent = `${f.total.sejours} séjours arrivés ${periode.startsWith("du") ? periode : "en " + periode.toLowerCase()}, toutes les nuitées à 12 %.`;
+
+  const histo = lireHisto().filter((h) => h.du <= isoDate(au) && h.au >= isoDate(du) && h.numero !== $("numero").value.trim());
+  $("alerte-facture").hidden = !histo.length;
+  $("alerte-facture").textContent = histo.length
+    ? `Attention : la période recoupe la facture ${histo.map((h) => `${h.numero} (${dateFr(parseInputDate(h.du))} au ${dateFr(parseInputDate(h.au))})`).join(", ")}. Vérifiez que ces séjours ne sont pas facturés deux fois.`
+    : "";
+
+  if (!f.mois.length) {
+    $("papier").innerHTML = `<div class="vide" style="width:100%"><h2>Aucun séjour n'arrive dans cette période</h2><p class="aide">Vérifiez les dates ou ajoutez l'export qui couvre cette période.</p></div>`;
+    $("imprimer").disabled = true;
+    return;
+  }
+  $("imprimer").disabled = false;
+  const pied = `<div class="f-pied">${esc(SOCIETE.nom)} · ${esc(SOCIETE.adresse.slice(0, 2).join(", "))} · TVA ${SOCIETE.tva} · RPM ${SOCIETE.rpm}<br>IBAN ${SOCIETE.iban} · BIC ${SOCIETE.bic} · ${SOCIETE.tel} · ${SOCIETE.email}</div>`;
+  const page1 = `
+  <article class="feuille portrait">
+    <div class="f-entete">
+      <img src="${LOGO}" alt="Chez Spoons">
+      <div class="f-meta">
+        <div class="f-titre">FACTURE</div>
+        <div><span>N° de facture</span><b>${esc(numero)}</b></div>
+        <div><span>Date de facture</span><b>${dateFact ? dateFr(dateFact) : "À compléter"}</b></div>
+        <div><span>Période</span><b>${esc(periode[0].toUpperCase() + periode.slice(1))}</b></div>
+        <div><span>Conditions de paiement</span><b>${esc(conditions)}</b></div>
+      </div>
+    </div>
+    <hr class="f-trait">
+    <div class="f-parties">
+      <div>
+        <div class="f-label">Émetteur</div>
+        <div class="f-nom">${SOCIETE.marque}</div>
+        <div>${SOCIETE.nom}</div>
+        ${SOCIETE.adresse.map((l) => `<div>${l}</div>`).join("")}
+        <div class="f-petit">TVA ${SOCIETE.tva}</div>
+      </div>
+      <div class="client">
+        <div class="f-label">Facturé à</div>
+        <div class="f-nom">Clients divers</div>
+        <div>Hébergement en chambres d'hôtes</div>
+        <div>Séjours ${periode.startsWith("du") ? periode : "de " + periode.toLowerCase()}</div>
+      </div>
+    </div>
+    <div class="f-section">
+      <div class="f-label">Récapitulatif</div>
+      <table class="f-tab">
+        <thead><tr><th>Période</th><th class="d">Séjours</th><th class="d">Nuits</th><th class="d">Montant HTVA</th><th class="d">TVA ${pct(TAUX_TVA)}</th><th class="d">Montant TVAC</th></tr></thead>
+        <tbody>${f.mois.map((m) => `<tr><td>Nuitées ${m.libelle.toLowerCase()}</td><td class="d">${m.sejours}</td><td class="d">${m.nuits}</td><td class="d">${eur(m.htva)}</td><td class="d">${eur(m.tva)}</td><td class="d"><b>${eur(m.ttc)}</b></td></tr>`).join("")}</tbody>
+      </table>
+      <table class="f-totaux">
+        <tr><td>Sous-total HTVA</td><td>${eur(f.total.htva)}</td></tr>
+        <tr><td>TVA ${pct(TAUX_TVA)}</td><td>${eur(f.total.tva)}</td></tr>
+        <tr class="total"><td>Total TVA incluse</td><td>${eur(f.total.ttc)}</td></tr>
+      </table>
+    </div>
+    <div class="f-section f-infos">
+      <div class="f-label">Informations</div>
+      <p>Prestations : nuitées en chambres d'hôtes, petit-déjeuner compris, TVA hébergement de 12 %.</p>
+      <p>Le détail des séjours par réservation figure en annexe.</p>
+      <p>Facture acquittée : montants encaissés via booking.com et chezspoons.com.</p>
+    </div>
+    ${pied}
+  </article>`;
+
+  const lignes = [];
+  for (const m of f.mois) {
+    lignes.push(`<tr class="mois"><td colspan="11">${m.libelle}</td></tr>`);
+    m.lignes.forEach((l, i) => lignes.push(`<tr class="${i % 2 ? "zebre" : ""}"><td>${l.canal}</td><td>${esc(l.ref)}</td><td>${esc(l.client)}</td><td>${esc(l.chambre)}</td><td class="c">${l.arrivee}</td><td class="c">${l.depart}</td><td class="c">${l.nuits}</td><td class="d">${eur(l.ttc)}</td><td class="c">${pct(l.taux)}</td><td class="d">${eur(l.htva)}</td><td class="d">${eur(l.tva)}</td></tr>`));
+    lignes.push(`<tr class="sous-total"><td colspan="6">Sous-total ${m.libelle.toLowerCase()}</td><td class="c">${m.nuits}</td><td class="d">${eur(m.ttc)}</td><td></td><td class="d">${eur(m.htva)}</td><td class="d">${eur(m.tva)}</td></tr>`);
+  }
+  lignes.push(`<tr class="grand-total"><td colspan="6">Total de la période</td><td class="c">${f.total.nuits}</td><td class="d">${eur(f.total.ttc)}</td><td></td><td class="d">${eur(f.total.htva)}</td><td class="d">${eur(f.total.tva)}</td></tr>`);
+  const annexe = `
+  <article class="feuille paysage">
+    <div class="f-annexe-tete">
+      <img src="${LOGO}" alt="">
+      <div><h2>Détail des nuitées</h2><p>Annexe à la facture n° <b>${esc(numero)}</b> · ${SOCIETE.nom} · TVA ${SOCIETE.tva}</p></div>
+    </div>
+    <table class="f-tab f-detail">
+      <thead><tr><th>Canal</th><th>N° réservation</th><th>Client</th><th>Chambre</th><th class="c">Arrivée</th><th class="c">Départ</th><th class="c">Nuits</th><th class="d">Montant TVAC</th><th class="c">Taux TVA</th><th class="d">Montant HTVA</th><th class="d">TVA</th></tr></thead>
+      <tbody>${lignes.join("")}</tbody>
+    </table>
+  </article>`;
+  $("papier").innerHTML = page1 + annexe;
+}
+
+function rendreStatbel(parMois) {
+  if (!parMois.length) {
+    $("statbel").innerHTML = `<div class="vide"><h2>Aucun départ dans cette période</h2><p class="aide">Statbel compte les séjours le mois du départ. Si personne n'est parti, le tableau Nuitées reste vide dans le websurvey.</p></div>`;
+    return;
+  }
+  $("statbel").innerHTML = parMois.map((m, i) => `
+    <section class="mois-statbel">
+      <header>
+        <h3>${m.libelle}<small>mois de référence ${+m.mois.slice(5)} · ${m.lignes.length} séjours · ${m.nuitees} nuitées</small></h3>
+        <button class="btn contour" data-csv="${i}">Télécharger statbel_${m.mois}.csv</button>
+      </header>
+      <div class="defile">
+        <table class="grille">
+          <thead><tr><th>Pays</th><th>But du séjour</th><th>Jour de départ</th><th class="num">Nuits</th><th class="num">Personnes</th><th class="num">Unités</th><th>Région en Belgique</th><th>Réservation</th></tr></thead>
+          <tbody>${m.lignes.map((s) => `<tr>
+            <td>${s.pays}</td><td>${LIBELLE_BUT[s.but]}</td><td>${dateFr(s.depart)}</td>
+            <td class="num">${s.nuits}</td><td class="num">${s.personnes}</td><td class="num">${s.unites}</td>
+            <td>${s.region ? LIBELLE_REGION[s.region] : ""}${s.regionEstimee ? ' <span class="estimee">estimée</span>' : ""}</td>
+            <td class="source">${s.canal === "Booking" ? "Booking" : "Site"} ${esc(s.ref)} · ${esc(s.client || "")}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>`).join("");
+  $("statbel").querySelectorAll("[data-csv]").forEach((b) => b.addEventListener("click", () => {
+    const m = parMois[+b.dataset.csv];
+    telecharger(`statbel_${m.mois}.csv`, csvStatbel(m.lignes), "text/csv;charset=utf-8");
+  }));
+}
+
+function telecharger(nom, contenu, type) {
+  const url = URL.createObjectURL(new Blob([contenu], { type }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: nom });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Événements
+const depot = $("depot");
+depot.addEventListener("click", () => $("choix").click());
+depot.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("choix").click(); } });
+$("choix").addEventListener("change", (e) => { ajouter([...e.target.files]); e.target.value = ""; });
+["dragenter", "dragover"].forEach((t) => depot.addEventListener(t, (e) => { e.preventDefault(); depot.classList.add("survol"); }));
+["dragleave", "drop"].forEach((t) => depot.addEventListener(t, (e) => { e.preventDefault(); depot.classList.remove("survol"); }));
+depot.addEventListener("drop", (e) => ajouter([...e.dataTransfer.files]));
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => { e.preventDefault(); if (e.target !== depot && !depot.contains(e.target)) ajouter([...e.dataTransfer.files]); });
+$("fichiers").addEventListener("click", (e) => {
+  const b = e.target.closest(".retirer");
+  if (b) { fichiers.splice(+b.dataset.i, 1); afficher(); }
+});
+$("raccourcis").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-a]");
+  if (b) { choisirMois(+b.dataset.a, +b.dataset.m); afficher(); }
+});
+["du", "au", "numero", "datefact", "conditions"].forEach((id) => $(id).addEventListener("input", afficher));
+document.querySelectorAll(".onglets button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".onglets button").forEach((x) => {
+    x.setAttribute("aria-selected", x === b);
+    $(x.dataset.vue).hidden = x !== b;
+  });
+}));
+$("imprimer").addEventListener("click", () => {
+  // Mémorise la facture émise pour signaler un recouvrement la prochaine fois
+  const numero = $("numero").value.trim();
+  if (numero) {
+    try {
+      const histo = lireHisto().filter((h) => h.numero !== numero);
+      histo.push({ numero, du: $("du").value, au: $("au").value });
+      localStorage.setItem(CLE_HISTO, JSON.stringify(histo));
+    } catch (e) { /* stockage indisponible : pas de mémoire des factures */ }
+  }
+  window.print();
+});
+
+$("datefact").value = isoDate(new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())));
+afficher();
+</script>
+</body>
+</html>
