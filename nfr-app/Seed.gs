@@ -44,7 +44,9 @@ function seedOctobre2026() {
     e.taux = 1;
     saveExpense(e);
   });
-  return 'Octobre 2026 chargé : ' + s.frais.length + ' frais, ' + s.jours.length + ' journées particulières.';
+  var msg = 'Octobre 2026 chargé : ' + s.frais.length + ' frais, ' + s.jours.length + ' journées particulières.';
+  console.log(msg);
+  return msg;
 }
 
 if (typeof module !== 'undefined') module.exports = NFR_SEED_OCT2026;

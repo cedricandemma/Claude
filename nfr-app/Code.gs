@@ -65,7 +65,10 @@ function setup() {
   fillIfEmpty_(ss, SHEETS.TARIFS, DEFAULT_TARIFS);
   var def = ss.getSheetByName('Feuille 1') || ss.getSheetByName('Sheet1');
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
-  return 'Installation terminée. Dossier : ' + root.getUrl() + ' ; données : ' + ss.getUrl();
+  var msg = 'Installation terminée pour le compte ' + Session.getEffectiveUser().getEmail() +
+    '\nDossier NFR Claude : ' + root.getUrl() + '\nClasseur NFR Données : ' + ss.getUrl();
+  console.log(msg);
+  return msg;
 }
 
 function rootFolder_() {
