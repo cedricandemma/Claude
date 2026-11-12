@@ -67,7 +67,7 @@ function annexBlob_(fileId, ref, e) {
     bytes = file.getBlob().getAs('image/jpeg').getBytes();
     mime = 'image/jpeg';
   } else if (isSpreadsheet_(mime, name)) {
-    bytes = spreadsheetToPdf_(fileId, mime);
+    bytes = cachedSpreadsheetPdf_(file);
     mime = 'application/pdf';
   } else if (/document|word/.test(mime)) {
     bytes = file.getBlob().getAs('application/pdf').getBytes();
@@ -79,6 +79,24 @@ function annexBlob_(fileId, ref, e) {
     ref: ref, name: name, mime: mime, b64: Utilities.base64Encode(bytes),
     legende: ref + ' · ' + frDate_(e.date) + ' · ' + (e.description || '') + ' · ' + eur_(e.montantEur !== '' ? e.montantEur : e.montantOrig)
   };
+}
+
+/** Conversion Excel vers PDF mémorisée à côté de l'original (la conversion est lente). */
+function cachedSpreadsheetPdf_(file) {
+  var cacheName = file.getName().replace(/\.(xlsx|xls|csv)$/i, '') + ' (PDF).pdf';
+  var parents = file.getParents();
+  var folder = parents.hasNext() ? parents.next() : null;
+  if (folder) {
+    var it = folder.getFilesByName(cacheName);
+    while (it.hasNext()) {
+      var c = it.next();
+      if (c.getLastUpdated() >= file.getLastUpdated()) return c.getBlob().getBytes();
+      c.setTrashed(true);
+    }
+  }
+  var bytes = spreadsheetToPdf_(file.getId(), file.getMimeType());
+  if (folder) folder.createFile(Utilities.newBlob(bytes, 'application/pdf', cacheName));
+  return bytes;
 }
 
 function spreadsheetToPdf_(fileId, mime) {

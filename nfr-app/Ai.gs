@@ -174,13 +174,24 @@ function checkRates(ym) {
     'Si tu ne trouves pas de valeur fiable, mets montant à 0 et confiance « basse ».\n' +
     'Termine ta réponse par un unique objet JSON conforme à ce schéma, sans texte après : ' + JSON.stringify(RATES_SCHEMA);
 
-  var r = callClaude_({
-    model: claudeModel_(),
-    max_tokens: 16000,
-    output_config: { effort: 'medium' },
-    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 8 }],
-    messages: [{ role: 'user', content: prompt }]
-  });
+  // Les tarifs changent deux fois par an : un résultat de moins de 24 h est réutilisé.
+  var props = PropertiesService.getScriptProperties();
+  var cacheKey = 'VERIF_TARIFS_' + ym;
+  var cached = null;
+  try { cached = JSON.parse(props.getProperty(cacheKey) || 'null'); } catch (e) { cached = null; }
+  var r;
+  if (cached && Date.now() - cached.at < 24 * 3600 * 1000 && sameCodes_(cached.codes, Object.keys(codes))) {
+    r = cached.r;
+  } else {
+    r = callClaude_({
+      model: claudeModel_(),
+      max_tokens: 16000,
+      output_config: { effort: 'low' },
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }],
+      messages: [{ role: 'user', content: prompt }]
+    });
+    props.setProperty(cacheKey, JSON.stringify({ at: Date.now(), codes: Object.keys(codes), r: r }));
+  }
 
   var diffs = [];
   (r.resultats || []).forEach(function (f) {
@@ -196,6 +207,10 @@ function checkRates(ym) {
   });
   setConfig_('DERNIERE_VERIF_TARIFS', new Date().toISOString() + ' (' + ym + ') : ' + diffs.length + ' écart(s)');
   return { verifieLe: new Date().toISOString(), ecarts: diffs, resultats: r.resultats };
+}
+
+function sameCodes_(a, b) {
+  return (a || []).slice().sort().join(',') === (b || []).slice().sort().join(',');
 }
 
 /** Enregistre un nouveau tarif daté, après validation par l'utilisateur. */

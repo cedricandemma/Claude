@@ -82,7 +82,16 @@ function rootFolder_() {
   return f;
 }
 
+// Caches valables pour une seule exécution (chaque appel de l'interface en est une).
+var MEMO_ = { ss: null, sheets: {}, rows: {} };
+
 function dataSpreadsheet_(create) {
+  if (MEMO_.ss) return MEMO_.ss;
+  MEMO_.ss = openDataSpreadsheet_(create);
+  return MEMO_.ss;
+}
+
+function openDataSpreadsheet_(create) {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('DATA_SS_ID');
   if (id) { try { return SpreadsheetApp.openById(id); } catch (e) { /* recherche ci-dessous */ } }
@@ -117,9 +126,22 @@ function fillIfEmpty_(ss, def, rows) {
 /* Accès aux onglets                                                  */
 /* ------------------------------------------------------------------ */
 
-function sheet_(def) { return ensureSheet_(dataSpreadsheet_(false), def); }
+function sheet_(def) {
+  if (!MEMO_.sheets[def.name]) MEMO_.sheets[def.name] = ensureSheet_(dataSpreadsheet_(false), def);
+  return MEMO_.sheets[def.name];
+}
 
 function readRows_(def) {
+  if (!MEMO_.rows[def.name]) MEMO_.rows[def.name] = readRowsFresh_(def);
+  return MEMO_.rows[def.name];
+}
+
+function deleteRow_(def, rowIndex) {
+  sheet_(def).deleteRow(rowIndex);
+  delete MEMO_.rows[def.name];
+}
+
+function readRowsFresh_(def) {
   var sh = sheet_(def);
   var n = sh.getLastRow();
   if (n < 2) return [];
@@ -138,6 +160,7 @@ function readRows_(def) {
 function writeRow_(def, rowIndex, obj) {
   var sh = sheet_(def);
   var row = def.headers.map(function (h) { return obj[h] === undefined ? '' : obj[h]; });
+  delete MEMO_.rows[def.name];
   if (rowIndex) sh.getRange(rowIndex, 1, 1, row.length).setValues([row]);
   else sh.appendRow(row);
 }
@@ -241,7 +264,7 @@ function setDay(personId, isoDate, statut, pays, libelle) {
   var rows = readRows_(SHEETS.JOURS);
   var r = rows.filter(function (x) { return String(x.personne) === personId && String(x.date) === isoDate; })[0];
   if (!statut) {
-    if (r) sheet_(SHEETS.JOURS).deleteRow(r._row);
+    if (r) deleteRow_(SHEETS.JOURS, r._row);
     return true;
   }
   writeRow_(SHEETS.JOURS, r ? r._row : null, { personne: personId, date: isoDate, statut: statut, pays: pays || '', libelle: libelle || '' });
@@ -279,7 +302,7 @@ function saveExpense(e) {
 
 function deleteExpense(id) {
   var r = readRows_(SHEETS.FRAIS).filter(function (x) { return x.id === id; })[0];
-  if (r) sheet_(SHEETS.FRAIS).deleteRow(r._row);
+  if (r) deleteRow_(SHEETS.FRAIS, r._row);
   return true;
 }
 

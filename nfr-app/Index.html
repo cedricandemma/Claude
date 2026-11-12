@@ -481,7 +481,7 @@ function expenseDialog(e, ai, done) {
 
 /* ---------- Génération de la note ---------- */
 function generate(check) {
-  var p = check && S.boot.hasApiKey ? (busy(true, 'Vérification des tarifs officiels…'), run('checkRates', S.ym)) : Promise.resolve(null);
+  var p = check && S.boot.hasApiKey ? (busy(true, 'Vérification des tarifs officiels sur internet (jusqu\'à une minute)…'), run('checkRates', S.ym)) : Promise.resolve(null);
   p.then(function (r) {
     busy(false);
     if (r && r.ecarts && r.ecarts.length) return ratesDialog(r.ecarts);
