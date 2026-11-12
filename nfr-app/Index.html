@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Notes de frais</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  :root {
+    --navy: #0f2a4a; --blue: #2f6fb3; --bg: #f4f6f9; --card: #fff; --ink: #1d2433; --muted: #6b7385;
+    --line: #e3e7ee; --ok: #1f8a5b; --warn: #b7791f; --bad: #c0392b;
+    --s-bureau: #2f6fb3; --s-home: #7b61c4; --s-conge: #1f8a5b; --s-maladie: #c0392b; --s-etranger: #d9822b; --s-ferie: #8a92a3;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; font: 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--navy); color: #fff; padding: 12px 16px 10px; position: sticky; top: 0; z-index: 10; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .between { justify-content: space-between; }
+  header select { background: rgba(255,255,255,.12); color: #fff; border: 0; border-radius: 8px; padding: 6px 8px; font-size: 15px; }
+  header select option { color: #000; }
+  .month { display: flex; align-items: center; gap: 4px; font-weight: 600; font-size: 17px; }
+  .month button, .icon { background: none; border: 0; color: inherit; font-size: 20px; padding: 4px 10px; cursor: pointer; }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; }
+  .tabs button { flex: 1; background: rgba(255,255,255,.1); color: #cfd9e6; border: 0; border-radius: 8px; padding: 8px 0; font-size: 14px; cursor: pointer; }
+  .tabs button.on { background: #fff; color: var(--navy); font-weight: 600; }
+  main { max-width: 860px; margin: 0 auto; padding: 14px 16px 90px; }
+  .card { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(15,42,74,.06); }
+  .kpi { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 8px; }
+  .kpi .big { font-size: 28px; font-weight: 700; color: var(--navy); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .warn { background: #fff7e6; border-left: 3px solid var(--warn); padding: 8px 10px; border-radius: 6px; font-size: 13px; margin-top: 8px; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal .h { text-align: center; font-size: 11px; color: var(--muted); text-transform: uppercase; padding: 2px 0; }
+  .cal .d { background: #fff; border-radius: 8px; min-height: 62px; padding: 4px; border: 1px solid var(--line); cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+  .cal .d.we { background: #fafbfc; }
+  .cal .d .n { font-size: 13px; font-weight: 600; }
+  .cal .d .s { font-size: 10px; font-weight: 600; border-radius: 4px; padding: 1px 4px; color: #fff; align-self: flex-start; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal .d .a { font-size: 10px; color: var(--muted); text-align: right; }
+  .s-BUREAU { background: var(--s-bureau); } .s-HOME { background: var(--s-home); } .s-CONGE { background: var(--s-conge); }
+  .s-MALADIE { background: var(--s-maladie); } .s-ETRANGER { background: var(--s-etranger); } .s-FERIE { background: var(--s-ferie); }
+  .s-RESTO { background: #b0457a; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .list .it { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; cursor: pointer; }
+  .list .it:last-child { border-bottom: 0; }
+  .list .it .dt { width: 46px; text-align: center; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .list .it .dt b { display: block; font-size: 17px; color: var(--ink); }
+  .list .it .tx { flex: 1; min-width: 0; }
+  .list .it .tx .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .it .am { font-weight: 600; text-align: right; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #eef3f9; color: var(--blue); margin-right: 4px; }
+  .btn { border: 0; border-radius: 10px; padding: 11px 16px; font-size: 15px; font-weight: 600; cursor: pointer; background: var(--blue); color: #fff; }
+  .btn.sec { background: #eef3f9; color: var(--navy); }
+  .btn.danger { background: #fdecea; color: var(--bad); }
+  .btn.block { width: 100%; }
+  .btn:disabled { opacity: .5; }
+  .fab { position: fixed; right: 18px; bottom: 22px; width: 58px; height: 58px; border-radius: 50%; background: var(--blue); color: #fff; font-size: 30px; border: 0; box-shadow: 0 4px 14px rgba(47,111,179,.45); cursor: pointer; z-index: 20; }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(15,42,74,.4); z-index: 30; display: none; align-items: flex-end; justify-content: center; }
+  .sheet-bg.on { display: flex; }
+  .sheet { background: #fff; width: 100%; max-width: 560px; max-height: 92vh; overflow: auto; border-radius: 16px 16px 0 0; padding: 16px 16px 24px; }
+  @media (min-width: 700px) { .sheet-bg { align-items: center; } .sheet { border-radius: 16px; } }
+  .sheet h3 { margin: 0 0 12px; font-size: 17px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .4px; }
+  input, select, textarea { width: 100%; font-size: 16px; padding: 10px; border: 1px solid #cfd6e0; border-radius: 8px; background: #fff; color: var(--ink); font-family: inherit; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { border: 1px solid #cfd6e0; background: #fff; border-radius: 20px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+  .chips button.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; }
+  .actions .btn { flex: 1; }
+  .ai { background: #f0f7f3; border-left: 3px solid var(--ok); padding: 8px 10px; border-radius: 6px; font-size: 13px; margin-bottom: 6px; }
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 50; display: none; max-width: 90vw; }
+  .loading { position: fixed; inset: 0; background: rgba(255,255,255,.7); z-index: 40; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; font-weight: 600; color: var(--navy); }
+  .spin { width: 34px; height: 34px; border: 3px solid #cfd9e6; border-top-color: var(--blue); border-radius: 50%; animation: sp 0.8s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  table.sum { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.sum td { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  table.sum td:last-child { text-align: right; font-weight: 600; }
+  .diff { border: 1px solid #f0d9a8; background: #fffaf0; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <div class="row between">
+    <select id="person"></select>
+    <div class="month"><button id="prev" aria-label="Mois précédent">‹</button><span id="mlabel"></span><button id="next" aria-label="Mois suivant">›</button></div>
+    <button class="icon" id="settingsBtn" aria-label="Réglages">⚙︎</button>
+  </div>
+  <div class="tabs">
+    <button data-tab="cal" class="on">Calendrier</button>
+    <button data-tab="frais">Frais</button>
+    <button data-tab="note">Note</button>
+  </div>
+</header>
+
+<main>
+  <div class="card kpi">
+    <div><div class="muted">Total du mois</div><div class="big" id="total">…</div></div>
+    <div class="muted" id="kpis"></div>
+  </div>
+  <div id="warnings"></div>
+  <section id="tab-cal"></section>
+  <section id="tab-frais" hidden></section>
+  <section id="tab-note" hidden></section>
+</main>
+
+<button class="fab" id="fab" aria-label="Ajouter un justificatif">+</button>
+<input type="file" id="fileInput" accept="image/*,application/pdf,.xlsx,.xls,.csv" multiple hidden>
+
+<div class="sheet-bg" id="sheetBg"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading"><div class="spin"></div><div id="loadingMsg">Chargement…</div></div>
+
+<script>
+var S = { boot: null, person: null, ym: null, month: null, tab: 'cal' };
+var MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+var JOURS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+var JOURS_LONG = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+
+function run(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (ok, ko) {
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { ko(e); });
+    r[fn].apply(r, args);
+  });
+}
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function eur(x) { return (Number(x) || 0).toLocaleString('fr-BE', { style: 'currency', currency: 'EUR' }); }
+function toast(msg, ms) { var t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, ms || 2600); }
+function busy(on, msg) { $('loading').style.display = on ? 'flex' : 'none'; $('loadingMsg').textContent = msg || 'Chargement…'; }
+function fail(e) { busy(false); alert((e && e.message) || e); }
+function openSheet(html) { $('sheet').innerHTML = html; $('sheetBg').classList.add('on'); }
+function closeSheet() { $('sheetBg').classList.remove('on'); }
+$('sheetBg').addEventListener('click', function (e) { if (e.target === this) closeSheet(); });
+function frDate(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+function catLabel(c) { return S.boot.categories[c] ? S.boot.categories[c].label : c; }
+function isCharge(c) { return S.boot.categories[c] && S.boot.categories[c].type === 'charge'; }
+function prefKey(k) { return 'nfr.' + k; }
+function pref(k, v) { try { if (v === undefined) return localStorage.getItem(prefKey(k)); localStorage.setItem(prefKey(k), v); } catch (e) { return null; } }
+
+/* ---------- Démarrage ---------- */
+function init() {
+  busy(true);
+  run('getBootstrap').then(function (b) {
+    S.boot = b;
+    $('person').innerHTML = b.persons.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nom) + '</option>'; }).join('');
+    S.person = pref('person') && b.persons.some(function (p) { return p.id === pref('person'); }) ? pref('person') : b.persons[0].id;
+    $('person').value = S.person;
+    var now = new Date(); now.setDate(1);
+    if (now.getDate() <= 15) now.setMonth(now.getMonth() - 1);
+    S.ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+    if (!b.hasApiKey) toast('Ajoutez votre clé API Claude dans Réglages pour la lecture automatique.', 5000);
+    return load();
+  }).catch(fail);
+}
+
+function load() {
+  var p = S.ym.split('-');
+  $('mlabel').textContent = MOIS[+p[1] - 1] + ' ' + p[0];
+  busy(true);
+  return run('getMonth', S.person, S.ym).then(function (m) { S.month = m; busy(false); render(); }).catch(fail);
+}
+
+$('person').onchange = function () { S.person = this.value; pref('person', S.person); load(); };
+$('prev').onclick = function () { shiftMonth(-1); };
+$('next').onclick = function () { shiftMonth(1); };
+function shiftMonth(n) { var p = S.ym.split('-'); var d = new Date(+p[0], +p[1] - 1 + n, 1); S.ym = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); load(); }
+Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (b) {
+  b.onclick = function () {
+    S.tab = b.dataset.tab;
+    Array.prototype.forEach.call(document.querySelectorAll('.tabs button'), function (x) { x.classList.toggle('on', x === b); });
+    ['cal', 'frais', 'note'].forEach(function (t) { $('tab-' + t).hidden = t !== S.tab; });
+  };
+});
+
+/* ---------- Rendu ---------- */
+function render() {
+  var m = S.month;
+  $('total').textContent = eur(m.total);
+  var k = [];
+  if (m.counts.forfait) k.push(m.counts.forfait + ' forfait(s)');
+  if (m.counts.perdiem) k.push(m.counts.perdiem + ' per diem');
+  if (m.counts.home) k.push(m.counts.home + ' homeworking');
+  if (m.counts.conge) k.push(m.counts.conge + ' congé(s)');
+  if (m.counts.maladie) k.push(m.counts.maladie + ' maladie');
+  $('kpis').innerHTML = k.join(' · ');
+  $('warnings').innerHTML = m.warnings.map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join('');
+  renderCal(); renderFrais(); renderNote();
+}
+
+function renderCal() {
+  var m = S.month, h = ['<div class="card"><div class="cal">'];
+  JOURS.forEach(function (j) { h.push('<div class="h">' + j + '</div>'); });
+  var first = (m.days[0].dow + 6) % 7;
+  for (var i = 0; i < first; i++) h.push('<div></div>');
+  m.days.forEach(function (d, idx) {
+    var we = d.dow === 0 || d.dow === 6;
+    var hasResto = d.expenses.some(function (it) { return it.exp.categorie === 'RESTO'; });
+    var st = S.boot.statuts[d.statut];
+    var chip = '';
+    if (d.statut === 'BUREAU' && hasResto) chip = '<span class="s s-RESTO">Repas</span>';
+    else if (d.statut === 'ETRANGER') chip = '<span class="s s-ETRANGER">' + esc(d.pays || '?') + '</span>';
+    else if (d.statut !== 'LIBRE') chip = '<span class="s s-' + d.statut + '">' + esc(st.label) + '</span>';
+    else if (hasResto) chip = '<span class="s s-RESTO">Repas</span>';
+    h.push('<div class="d' + (we ? ' we' : '') + '" data-i="' + idx + '"><span class="n">' + (idx + 1) + '</span>' + chip +
+      '<span class="a">' + (d.total ? eur(d.total).replace(/\s?€/, '') : '') + '</span></div>');
+  });
+  h.push('</div><div class="legend">');
+  [['BUREAU','Prestation (forfait)'],['HOME','Homeworking'],['CONGE','Congé'],['MALADIE','Maladie'],['ETRANGER','Étranger'],['RESTO','Repas d\'affaires'],['FERIE','Férié']]
+    .forEach(function (l) { h.push('<span><i class="s-' + l[0] + '"></i>' + l[1] + '</span>'); });
+  h.push('</div></div><div class="card"><button class="btn sec block" id="rangeBtn">Saisir une période (voyage, congés…)</button></div>');
+  $('tab-cal').innerHTML = h.join('');
+  Array.prototype.forEach.call($('tab-cal').querySelectorAll('.d[data-i]'), function (el) {
+    el.onclick = function () { dayDialog(S.month.days[+el.dataset.i]); };
+  });
+  $('rangeBtn').onclick = rangeDialog;
+}
+
+function paysOptions(sel) {
+  return Object.keys(S.boot.pays).map(function (c) { return '<option value="' + c + '"' + (c === sel ? ' selected' : '') + '>' + esc(S.boot.pays[c]) + '</option>'; }).join('');
+}
+
+var DAY_CHOICES = [['BUREAU','Prestation'],['HOME','Homeworking'],['CONGE','Congé'],['MALADIE','Maladie'],['ETRANGER','Étranger'],['LIBRE','Libre']];
+
+function dayDialog(d) {
+  var dt = new Date(d.date + 'T12:00:00');
+  var h = ['<h3>' + JOURS_LONG[dt.getDay()] + ' ' + frDate(d.date) + (d.ferie ? ' · ' + esc(d.ferie) : '') + '</h3>'];
+  h.push('<div class="chips" id="stChips">' + DAY_CHOICES.map(function (c) { return '<button data-s="' + c[0] + '"' + (d.statut === c[0] ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('') + '</div>');
+  h.push('<div id="etr"' + (d.statut === 'ETRANGER' ? '' : ' hidden') + '><label>Pays</label><select id="dPays">' + paysOptions(d.pays || 'LU') + '</select></div>');
+  h.push('<label>Libellé agenda (facultatif)</label><input id="dLib" value="' + esc(d.libelleSaisi) + '" placeholder="' + esc(d.agenda || '') + '">');
+  if (d.expenses.length) {
+    h.push('<label>Frais du jour</label><div class="list">');
+    d.expenses.forEach(function (it) { h.push(expenseRow(it)); });
+    h.push('</div>');
+  }
+  h.push('<div class="actions"><button class="btn sec" id="dReset">Par défaut</button><button class="btn" id="dOk">Enregistrer</button></div>');
+  openSheet(h.join(''));
+  var cur = d.statut;
+  Array.prototype.forEach.call(document.querySelectorAll('#stChips button'), function (b) {
+    b.onclick = function () {
+      cur = b.dataset.s;
+      Array.prototype.forEach.call(document.querySelectorAll('#stChips button'), function (x) { x.classList.toggle('on', x === b); });
+      $('etr').hidden = cur !== 'ETRANGER';
+    };
+  });
+  bindExpenseRows($('sheet'));
+  $('dReset').onclick = function () { closeSheet(); busy(true); run('setDay', S.person, d.date, '', '', '').then(load).catch(fail); };
+  $('dOk').onclick = function () {
+    closeSheet(); busy(true);
+    run('setDay', S.person, d.date, cur, cur === 'ETRANGER' ? $('dPays').value : '', $('dLib').value).then(load).catch(fail);
+  };
+}
+
+function rangeDialog() {
+  var p = S.ym.split('-');
+  var h = ['<h3>Période</h3><div class="grid2"><div><label>Du</label><input type="date" id="rFrom" value="' + S.ym + '-01"></div>',
+    '<div><label>Au</label><input type="date" id="rTo" value="' + S.ym + '-01"></div></div>',
+    '<label>Statut</label><select id="rSt">' + DAY_CHOICES.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('') + '<option value="">Revenir au défaut</option></select>',
+    '<div id="rEtr" hidden><label>Pays</label><select id="rPays">' + paysOptions('LU') + '</select></div>',
+    '<label>Libellé agenda (facultatif)</label><input id="rLib" placeholder="ex. Flexso Luxembourg SA">',
+    '<label style="text-transform:none"><input type="checkbox" id="rWe" style="width:auto"> Inclure les week-ends (toujours inclus pour l\'étranger)</label>',
+    '<div class="actions"><button class="btn sec" onclick="closeSheet()">Annuler</button><button class="btn" id="rOk">Appliquer</button></div>'];
+  openSheet(h.join(''));
+  $('rSt').onchange = function () { $('rEtr').hidden = this.value !== 'ETRANGER'; };
+  $('rOk').onclick = function () {
+    var st = $('rSt').value;
+    closeSheet(); busy(true);
+    run('setDayRange', S.person, $('rFrom').value, $('rTo').value, st, st === 'ETRANGER' ? $('rPays').value : '', $('rLib').value, $('rWe').checked).then(load).catch(fail);
+  };
+}
+
+function allExpenseItems() {
+  var m = S.month;
+  return m.days.reduce(function (a, d) { return a.concat(d.expenses); }, []).concat(m.charges);
+}
+
+function expenseRow(it) {
+  var e = it.exp, p = e.date.split('-');
+  var sub = isCharge(e.categorie) ? (Math.round(it.pct * 100) + ' % de ' + eur(it.eur)) : (e.commentaire ? esc(e.commentaire) : '');
+  if (e.devise && e.devise !== 'EUR') sub += (sub ? ' · ' : '') + e.montantOrig + ' ' + e.devise;
+  return '<div class="it" data-id="' + esc(e.id) + '"><div class="dt"><b>' + p[2] + '</b>' + MOIS[+p[1] - 1].slice(0, 4) + '</div>' +
+    '<div class="tx"><div class="t">' + esc(e.description || catLabel(e.categorie)) + '</div><div class="muted"><span class="tag">' + esc(catLabel(e.categorie)) + '</span>' + sub +
+    (e.fichierId ? '' : ' · <span style="color:#c0392b">sans justificatif</span>') + '</div></div><div class="am">' + eur(it.retenu) + '</div></div>';
+}
+
+function bindExpenseRows(root) {
+  Array.prototype.forEach.call(root.querySelectorAll('.it[data-id]'), function (el) {
+    el.onclick = function () {
+      var it = allExpenseItems().filter(function (x) { return x.exp.id === el.dataset.id; })[0];
+      if (it) expenseDialog(it.exp, null);
+    };
+  });
+}
+
+function renderFrais() {
+  var m = S.month, days = [], charges = m.charges;
+  m.days.forEach(function (d) { d.expenses.forEach(function (it) { days.push(it); }); });
+  var h = ['<div class="card"><div class="row between"><b>Frais du mois</b><button class="btn sec" id="manual">Saisie manuelle</button></div>'];
+  h.push(days.length ? '<div class="list">' + days.map(expenseRow).join('') + '</div>' : '<p class="muted">Aucun frais. Touchez + pour photographier un ticket ou déposer un fichier.</p>');
+  h.push('</div><div class="card"><b>Charges du domicile</b>');
+  h.push(charges.length ? '<div class="list">' + charges.map(expenseRow).join('') + '</div>' : '<p class="muted">Pellets, électricité, eau, taxes et assurances à 42 %, borne de recharge à 100 % (déposez l\'Excel des séances).</p>');
+  h.push('</div>');
+  $('tab-frais').innerHTML = h.join('');
+  bindExpenseRows($('tab-frais'));
+  $('manual').onclick = function () { expenseDialog({ date: S.ym + '-01', categorie: 'RESTO', devise: 'EUR', personne: S.person, mois: S.ym }, null); };
+}
+
+function renderNote() {
+  var m = S.month, h = ['<div class="card"><b>Récapitulatif</b><table class="sum">'];
+  S.boot.dayColumns.forEach(function (c) { if (m.colTotals[c.key]) h.push('<tr><td>' + esc(c.label) + '</td><td>' + eur(m.colTotals[c.key]) + '</td></tr>'); });
+  S.boot.chargeColumns.forEach(function (c) { if (m.chargeTotals[c.key]) h.push('<tr><td>' + esc(c.label) + '</td><td>' + eur(m.chargeTotals[c.key]) + '</td></tr>'); });
+  h.push('<tr><td><b>Total</b></td><td>' + eur(m.total) + '</td></tr></table></div>');
+  h.push('<div class="card"><button class="btn block" id="genBtn">Vérifier les tarifs et générer le PDF</button>');
+  h.push('<p class="muted">Les tarifs officiels (forfait belge, per diem) sont vérifiés sur internet ; tout écart vous est proposé avant d\'être appliqué.</p>');
+  h.push('<button class="btn sec block" id="genNoCheck">Générer sans vérifier les tarifs</button></div>');
+  if (m.notes && m.notes.length) {
+    h.push('<div class="card"><b>Notes générées</b><div class="list">');
+    m.notes.slice().reverse().forEach(function (n) {
+      h.push('<div class="it"><div class="tx"><div class="t">' + esc(n.numero) + '</div><div class="muted">' + esc(String(n.genere_le).slice(0, 10)) + '</div></div><div class="am"><a href="' + esc(n.pdf_url) + '" target="_blank">' + eur(n.total) + ' ↗</a></div></div>');
+    });
+    h.push('</div></div>');
+  }
+  $('tab-note').innerHTML = h.join('');
+  $('genBtn').onclick = function () { generate(true); };
+  $('genNoCheck').onclick = function () { generate(false); };
+}
+
+/* ---------- Ajout de justificatifs ---------- */
+$('fab').onclick = function () { $('fileInput').value = ''; $('fileInput').click(); };
+$('fileInput').onchange = function () {
+  var files = Array.prototype.slice.call(this.files);
+  var queue = Promise.resolve();
+  files.forEach(function (f, i) {
+    queue = queue.then(function () { return processFile(f, i + 1, files.length); });
+  });
+  queue.catch(fail);
+};
+
+function readAsB64(blob) {
+  return new Promise(function (ok, ko) {
+    var r = new FileReader();
+    r.onload = function () { ok(String(r.result).split(',')[1]); };
+    r.onerror = ko;
+    r.readAsDataURL(blob);
+  });
+}
+
+function shrinkImage(file) {
+  return new Promise(function (ok) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var max = 2000, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function (b) { ok(b || file); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); ok(file); };
+    img.src = url;
+  });
+}
+
+function processFile(file, i, n) {
+  var isImg = /^image\//.test(file.type);
+  var mime = file.type || (/\.xlsx$/i.test(file.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/octet-stream');
+  var name = file.name || ('photo-' + Date.now() + '.jpg');
+  busy(true, 'Envoi ' + i + '/' + n + '…');
+  return (isImg ? shrinkImage(file) : Promise.resolve(file)).then(function (blob) {
+    if (isImg) { mime = 'image/jpeg'; name = name.replace(/\.(heic|heif|png|jpg|jpeg|webp)$/i, '') + '.jpg'; }
+    return readAsB64(blob);
+  }).then(function (b64) {
+    return run('uploadFile', S.person, S.ym, name, mime, b64);
+  }).then(function (f) {
+    if (!S.boot.hasApiKey && !/sheet|excel|csv/i.test(mime)) {
+      busy(false);
+      return expenseDialogP({ date: S.ym + '-01', categorie: 'RESTO', devise: 'EUR', fichierId: f.id, fichierNom: f.name, personne: S.person, mois: S.ym }, null);
+    }
+    busy(true, 'Lecture du justificatif ' + i + '/' + n + '…');
+    return run('analyzeFile', f.id, S.person, S.ym).then(function (r) {
+      busy(false);
+      var e = {
+        date: r.date, categorie: r.categorie, montantOrig: r.montant, devise: r.devise, quantite: r.quantite || '',
+        description: r.description, commentaire: '', fichierId: f.id, fichierNom: f.name, personne: S.person, mois: S.ym
+      };
+      if (isCharge(e.categorie)) e.mois = S.ym;
+      return expenseDialogP(e, r);
+    }, function (err) {
+      busy(false);
+      toast('Lecture automatique impossible : ' + ((err && err.message) || err), 4000);
+      return expenseDialogP({ date: S.ym + '-01', categorie: 'RESTO', devise: 'EUR', fichierId: f.id, fichierNom: f.name, personne: S.person, mois: S.ym }, null);
+    });
+  });
+}
+
+function expenseDialogP(e, ai) { return new Promise(function (ok) { expenseDialog(e, ai, ok); }); }
+
+function expenseDialog(e, ai, done) {
+  var cats = Object.keys(S.boot.categories);
+  var h = ['<h3>' + (e.id ? 'Modifier le frais' : 'Nouveau frais') + '</h3>'];
+  if (ai) {
+    h.push('<div class="ai">Lu automatiquement (confiance ' + esc(ai.confiance || '') + ')' + (ai.couverts ? ' · ' + ai.couverts + ' couvert(s)' : '') +
+      (ai.remarque ? '<br>⚠︎ ' + esc(ai.remarque) : '') + '</div>');
+    if (ai.date && ai.date.slice(0, 7) !== S.ym && !isCharge(ai.categorie)) h.push('<div class="warn">Date hors du mois affiché (' + frDate(ai.date) + ').</div>');
+  }
+  h.push('<div class="grid2"><div><label>Date</label><input type="date" id="eDate" value="' + esc(e.date) + '"></div>');
+  h.push('<div><label>Catégorie</label><select id="eCat">' + cats.map(function (c) { return '<option value="' + c + '"' + (c === e.categorie ? ' selected' : '') + '>' + esc(catLabel(c)) + '</option>'; }).join('') + '</select></div></div>');
+  h.push('<div class="grid2"><div><label>Montant</label><input type="number" step="0.01" inputmode="decimal" id="eMt" value="' + (e.montantOrig != null ? e.montantOrig : '') + '"></div>');
+  h.push('<div><label>Devise</label><select id="eDev">' + ['EUR','CHF','GBP','USD','DKK','SEK','NOK','PLN','CZK','HUF'].map(function (d) { return '<option' + (d === (e.devise || 'EUR') ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select></div></div>');
+  h.push('<div id="eFx" class="muted" hidden>Converti au cours BCE du jour de la dépense.</div>');
+  h.push('<div id="eKwh"' + (e.categorie === 'BORNE' ? '' : ' hidden') + '><label>kWh</label><input type="number" step="0.001" id="eQty" value="' + esc(e.quantite || '') + '"></div>');
+  h.push('<label>Description</label><input id="eDesc" value="' + esc(e.description || '') + '">');
+  h.push('<div id="eComWrap"><label id="eComLbl">Commentaire</label><input id="eCom" value="' + esc(e.commentaire || '') + '"></div>');
+  h.push('<div id="eMoisWrap"' + (isCharge(e.categorie) ? '' : ' hidden') + '><label>Imputé au mois</label><input type="month" id="eMois" value="' + esc(e.mois || S.ym) + '"></div>');
+  if (e.fichierId) h.push('<p class="muted">Justificatif : ' + esc(e.fichierNom || '') + '</p>');
+  h.push('<div class="actions">' + (e.id ? '<button class="btn danger" id="eDel">Supprimer</button>' : '<button class="btn sec" id="eCancel">Ignorer</button>') + '<button class="btn" id="eOk">Valider</button></div>');
+  openSheet(h.join(''));
+
+  function sync() {
+    var c = $('eCat').value;
+    $('eComLbl').textContent = c === 'RESTO' ? 'Avec qui ? (société) — remplace le libellé agenda' : 'Commentaire';
+    $('eCom').placeholder = c === 'RESTO' ? 'ex. Flexso Brussels - Project Managers' : '';
+    $('eMoisWrap').hidden = !isCharge(c);
+    $('eKwh').hidden = c !== 'BORNE';
+    $('eFx').hidden = $('eDev').value === 'EUR';
+  }
+  $('eCat').onchange = sync; $('eDev').onchange = sync; sync();
+  $('eQty').oninput = function () {
+    var px = null;
+    S.boot.rates.forEach(function (r) { if (r.code === 'PRIX_KWH_BORNE' && r.montant !== '' && (!px || r.debut > px.debut)) px = r; });
+    var q = Number(String(this.value).replace(',', '.'));
+    if (px && q) { $('eMt').value = (Math.round(q * px.montant * 100) / 100).toFixed(2); $('eDesc').value = 'Borne de recharge, ' + String(q).replace('.', ',') + ' kWh à ' + String(px.montant).replace('.', ',') + ' €'; }
+  };
+  if (e.categorie === 'RESTO' && !e.commentaire) setTimeout(function () { $('eCom').focus(); }, 300);
+
+  if ($('eCancel')) $('eCancel').onclick = function () { closeSheet(); if (done) done(); };
+  if ($('eDel')) $('eDel').onclick = function () {
+    if (!confirm('Supprimer ce frais ?')) return;
+    closeSheet(); busy(true); run('deleteExpense', e.id).then(load).then(function () { if (done) done(); }).catch(fail);
+  };
+  $('eOk').onclick = function () {
+    var c = $('eCat').value;
+    if (c === 'RESTO' && !$('eCom').value.trim() && !confirm('Pas de commentaire « avec qui ». Valider quand même ?')) return;
+    var o = {
+      id: e.id || '', personne: S.person, date: $('eDate').value, categorie: c,
+      montantOrig: Number(String($('eMt').value).replace(',', '.')), devise: $('eDev').value, taux: e.devise === $('eDev').value ? e.taux : 0,
+      description: $('eDesc').value, commentaire: $('eCom').value, quantite: $('eQty').value,
+      mois: isCharge(c) ? $('eMois').value : $('eDate').value.slice(0, 7),
+      fichierId: e.fichierId || '', fichierNom: e.fichierNom || ''
+    };
+    closeSheet(); busy(true, 'Enregistrement…');
+    run('saveExpense', o).then(load).then(function () { toast('Frais enregistré'); if (done) done(); }).catch(fail);
+  };
+}
+
+/* ---------- Génération de la note ---------- */
+function generate(check) {
+  var p = check && S.boot.hasApiKey ? (busy(true, 'Vérification des tarifs officiels…'), run('checkRates', S.ym)) : Promise.resolve(null);
+  p.then(function (r) {
+    busy(false);
+    if (r && r.ecarts && r.ecarts.length) return ratesDialog(r.ecarts);
+    if (r) toast('Tarifs à jour.');
+  }).then(function () { return buildPdf(); }).catch(fail);
+}
+
+function ratesDialog(diffs) {
+  return new Promise(function (ok) {
+    var h = ['<h3>Nouveaux tarifs détectés</h3><p class="muted">Validez chaque changement avant qu\'il ne soit appliqué aux notes à partir de sa date d\'effet.</p>'];
+    diffs.forEach(function (d, i) {
+      h.push('<div class="diff"><b>' + esc(d.libelle) + '</b><br>Actuel : ' + (d.actuel == null ? '—' : eur(d.actuel) + ' depuis le ' + frDate(d.actuelDepuis)) +
+        '<br>Trouvé : <b>' + eur(d.nouveau) + '</b> depuis le ' + frDate(d.depuis) + ' (confiance ' + esc(d.confiance) + ')' +
+        '<br><span class="muted">' + esc(d.reference) + (d.source ? ' · <a href="' + esc(d.source) + '" target="_blank">source</a>' : '') + '</span>' +
+        '<div class="actions"><button class="btn sec" data-skip="' + i + '">Ignorer</button><button class="btn" data-apply="' + i + '">Appliquer</button></div></div>');
+    });
+    h.push('<button class="btn block" id="rgo">Continuer vers le PDF</button>');
+    openSheet(h.join(''));
+    Array.prototype.forEach.call(document.querySelectorAll('[data-apply]'), function (b) {
+      b.onclick = function () {
+        var d = diffs[+b.dataset.apply];
+        b.disabled = true;
+        run('applyRate', d.code, d.nouveau, d.depuis, (d.reference || '') + ' ' + (d.source || '')).then(function () {
+          b.textContent = 'Appliqué ✓'; b.parentNode.querySelector('[data-skip]').hidden = true;
+        }).catch(fail);
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-skip]'), function (b) { b.onclick = function () { b.closest('.diff').style.opacity = .4; }; });
+    $('rgo').onclick = function () {
+      closeSheet();
+      run('getBootstrap').then(function (b) { S.boot = b; return load(); }).then(ok).catch(fail);
+    };
+  });
+}
+
+function b64ToBytes(b64) { var s = atob(b64), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function bytesToB64(bytes) { var s = '', ch = 0x8000; for (var i = 0; i < bytes.length; i += ch) s += String.fromCharCode.apply(null, bytes.subarray(i, i + ch)); return btoa(s); }
+
+function buildPdf() {
+  busy(true, 'Préparation de la note et des justificatifs…');
+  var g;
+  return run('generateNote', S.person, S.ym).then(function (res) {
+    g = res;
+    busy(true, 'Assemblage du PDF…');
+    return mergePdf(res);
+  }).then(function (b64) {
+    busy(true, 'Enregistrement dans Google Drive…');
+    return run('saveFinalPdf', S.person, S.ym, g.fileName, b64, g.numero, g.total);
+  }).then(function (saved) {
+    busy(false);
+    var h = ['<h3>Note générée</h3><p><b>' + esc(g.numero) + '</b> · ' + eur(g.total) + '</p>'];
+    if (g.warnings.length) h.push(g.warnings.map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join(''));
+    h.push('<div class="actions"><a class="btn sec" href="' + esc(saved.folderUrl) + '" target="_blank" style="text-align:center;text-decoration:none">Dossier</a>' +
+      '<a class="btn" href="' + esc(saved.url) + '" target="_blank" style="text-align:center;text-decoration:none">Ouvrir le PDF</a></div>');
+    openSheet(h.join(''));
+    return load();
+  });
+}
+
+function mergePdf(res) {
+  var L = PDFLib;
+  return L.PDFDocument.load(b64ToBytes(res.recap)).then(function (doc) {
+    return doc.embedFont(L.StandardFonts.Helvetica).then(function (font) {
+      var chain = Promise.resolve();
+      res.annexes.forEach(function (a) {
+        chain = chain.then(function () {
+          var bytes = b64ToBytes(a.b64);
+          var legend = a.legende.replace(/[^\x20-\x7E -ÿ€·]/g, ' ').replace(/·/g, '-').replace(/€/g, 'EUR');
+          if (a.mime === 'application/pdf') {
+            return L.PDFDocument.load(bytes, { ignoreEncryption: true }).then(function (src) {
+              return doc.copyPages(src, src.getPageIndices());
+            }).then(function (pages) {
+              pages.forEach(function (pg) { doc.addPage(pg); stamp(pg, legend, font, L); });
+            });
+          }
+          var p = a.mime === 'image/png' ? doc.embedPng(bytes) : doc.embedJpg(bytes);
+          return p.then(function (img) {
+            var pg = doc.addPage([595.28, 841.89]);
+            var maxW = 595.28 - 60, maxH = 841.89 - 90, k = Math.min(maxW / img.width, maxH / img.height, 1);
+            var w = img.width * k, h = img.height * k;
+            pg.drawImage(img, { x: (595.28 - w) / 2, y: (841.89 - 50 - h) / 2, width: w, height: h });
+            stamp(pg, legend, font, L);
+          });
+        });
+      });
+      return chain.then(function () { return doc.save(); }).then(function (out) { return bytesToB64(out); });
+    });
+  });
+}
+
+function stamp(page, text, font, L) {
+  var size = page.getSize(), fs = 9, w = Math.min(font.widthOfTextAtSize(text, fs) + 12, size.width - 20);
+  page.drawRectangle({ x: 10, y: size.height - 24, width: w, height: 16, color: L.rgb(0.06, 0.16, 0.29), opacity: 0.9 });
+  page.drawText(text, { x: 16, y: size.height - 19, size: fs, font: font, color: L.rgb(1, 1, 1), maxWidth: size.width - 30 });
+}
+
+/* ---------- Réglages ---------- */
+$('settingsBtn').onclick = function () {
+  var cfg = S.boot.config;
+  var h = ['<h3>Réglages</h3>',
+    '<label>Clé API Claude</label><input id="sKey" type="password" placeholder="' + (S.boot.hasApiKey ? 'Clé enregistrée (laisser vide pour la conserver)' : 'sk-ant-…') + '">',
+    '<p class="muted">Créée sur console.anthropic.com. Elle reste dans les propriétés privées du script.</p>',
+    '<p class="muted">Tarifs, personnes et paramètres se modifient dans le classeur « NFR Données » du dossier NFR Claude.</p>',
+    '<p class="muted">Dernière vérification des tarifs : ' + esc(cfg.DERNIERE_VERIF_TARIFS || 'jamais') + '</p>',
+    '<label>Tarifs en vigueur</label><table class="sum">'];
+  var latest = {};
+  S.boot.rates.forEach(function (r) { if (!latest[r.code] || r.debut > latest[r.code].debut) latest[r.code] = r; });
+  Object.keys(latest).forEach(function (c) {
+    var r = latest[c];
+    h.push('<tr><td>' + esc(r.libelle) + '<div class="muted">depuis ' + (r.debut ? frDate(r.debut) : '—') + '</div></td><td>' + (r.montant === '' ? '<span style="color:#c0392b">à compléter</span>' : (r.code === 'TAUX_DOMICILE' ? Math.round(r.montant * 100) + ' %' : (r.code === 'PRIX_KWH_BORNE' ? r.montant + ' €/kWh' : eur(r.montant)))) + '</td></tr>');
+  });
+  h.push('</table><div class="actions"><button class="btn sec" onclick="closeSheet()">Fermer</button><button class="btn" id="sOk">Enregistrer</button></div>');
+  openSheet(h.join(''));
+  $('sOk').onclick = function () {
+    var k = $('sKey').value.trim();
+    if (!k) { closeSheet(); return; }
+    run('saveApiKey', k).then(function () { S.boot.hasApiKey = true; closeSheet(); toast('Clé enregistrée'); }).catch(fail);
+  };
+};
+
+init();
+</script>
+</body>
+</html>
