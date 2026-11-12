@@ -135,6 +135,7 @@ function fail(e) { busy(false); alert((e && e.message) || e); }
 function openSheet(html) { $('sheet').innerHTML = html; $('sheetBg').classList.add('on'); }
 function closeSheet() { $('sheetBg').classList.remove('on'); }
 $('sheetBg').addEventListener('click', function (e) { if (e.target === this) closeSheet(); });
+function num(v) { return Number(String(v).replace(/[\s\u00A0\u202F€]/g, '').replace(',', '.')) || 0; }
 function frDate(iso) { var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 function catLabel(c) { return S.boot.categories[c] ? S.boot.categories[c].label : c; }
 function isCharge(c) { return S.boot.categories[c] && S.boot.categories[c].type === 'charge'; }
@@ -407,10 +408,10 @@ function expenseDialog(e, ai, done) {
   }
   h.push('<div class="grid2"><div><label>Date</label><input type="date" id="eDate" value="' + esc(e.date) + '"></div>');
   h.push('<div><label>Catégorie</label><select id="eCat">' + cats.map(function (c) { return '<option value="' + c + '"' + (c === e.categorie ? ' selected' : '') + '>' + esc(catLabel(c)) + '</option>'; }).join('') + '</select></div></div>');
-  h.push('<div class="grid2"><div><label>Montant</label><input type="number" step="0.01" inputmode="decimal" id="eMt" value="' + (e.montantOrig != null ? e.montantOrig : '') + '"></div>');
+  h.push('<div class="grid2"><div><label>Montant</label><input type="text" inputmode="decimal" id="eMt" value="' + (e.montantOrig != null && e.montantOrig !== '' ? String(e.montantOrig).replace('.', ',') : '') + '"></div>');
   h.push('<div><label>Devise</label><select id="eDev">' + ['EUR','CHF','GBP','USD','DKK','SEK','NOK','PLN','CZK','HUF'].map(function (d) { return '<option' + (d === (e.devise || 'EUR') ? ' selected' : '') + '>' + d + '</option>'; }).join('') + '</select></div></div>');
   h.push('<div id="eFx" class="muted" hidden>Converti au cours BCE du jour de la dépense.</div>');
-  h.push('<div id="eKwh"' + (e.categorie === 'BORNE' ? '' : ' hidden') + '><label>kWh</label><input type="number" step="0.001" id="eQty" value="' + esc(e.quantite || '') + '"></div>');
+  h.push('<div id="eKwh"' + (e.categorie === 'BORNE' ? '' : ' hidden') + '><label>kWh</label><input type="text" inputmode="decimal" id="eQty" value="' + esc(String(e.quantite || '').replace('.', ',')) + '"></div>');
   h.push('<label>Description</label><input id="eDesc" value="' + esc(e.description || '') + '">');
   h.push('<div id="eComWrap"><label id="eComLbl">Commentaire</label><input id="eCom" value="' + esc(e.commentaire || '') + '"></div>');
   h.push('<div id="eMoisWrap"' + (isCharge(e.categorie) ? '' : ' hidden') + '><label>Imputé au mois</label><input type="month" id="eMois" value="' + esc(e.mois || S.ym) + '"></div>');
@@ -430,8 +431,8 @@ function expenseDialog(e, ai, done) {
   $('eQty').oninput = function () {
     var px = null;
     S.boot.rates.forEach(function (r) { if (r.code === 'PRIX_KWH_BORNE' && r.montant !== '' && (!px || r.debut > px.debut)) px = r; });
-    var q = Number(String(this.value).replace(',', '.'));
-    if (px && q) { $('eMt').value = (Math.round(q * px.montant * 100) / 100).toFixed(2); $('eDesc').value = 'Borne de recharge, ' + String(q).replace('.', ',') + ' kWh à ' + String(px.montant).replace('.', ',') + ' €'; }
+    var q = num(this.value);
+    if (px && q) { $('eMt').value = (Math.round(q * px.montant * 100) / 100).toFixed(2).replace('.', ','); $('eDesc').value = 'Borne de recharge, ' + String(q).replace('.', ',') + ' kWh à ' + String(px.montant).replace('.', ',') + ' €'; }
   };
   if (e.categorie === 'RESTO' && !e.commentaire) setTimeout(function () { $('eCom').focus(); }, 300);
 
@@ -442,11 +443,12 @@ function expenseDialog(e, ai, done) {
   };
   $('eOk').onclick = function () {
     var c = $('eCat').value;
+    if (!num($('eMt').value)) { alert('Montant manquant ou illisible (ex. 116,50).'); return; }
     if (c === 'RESTO' && !$('eCom').value.trim() && !confirm('Pas de commentaire « avec qui ». Valider quand même ?')) return;
     var o = {
       id: e.id || '', personne: S.person, date: $('eDate').value, categorie: c,
-      montantOrig: Number(String($('eMt').value).replace(',', '.')), devise: $('eDev').value, taux: e.devise === $('eDev').value ? e.taux : 0,
-      description: $('eDesc').value, commentaire: $('eCom').value, quantite: $('eQty').value,
+      montantOrig: num($('eMt').value), devise: $('eDev').value, taux: e.devise === $('eDev').value ? e.taux : 0,
+      description: $('eDesc').value, commentaire: $('eCom').value, quantite: $('eQty').value ? num($('eQty').value) : '',
       mois: isCharge(c) ? $('eMois').value : $('eDate').value.slice(0, 7),
       fichierId: e.fichierId || '', fichierNom: e.fichierNom || ''
     };
