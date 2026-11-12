@@ -99,15 +99,55 @@ function cachedSpreadsheetPdf_(file) {
   return bytes;
 }
 
+/**
+ * Excel vers PDF, en trois tentatives de plus en plus robustes :
+ * 1. export Google Sheets (mise en page paysage), 2. conversion Drive standard,
+ * 3. tableau reconstruit à partir des valeurs (ne peut pas échouer sur le format).
+ */
 function spreadsheetToPdf_(fileId, mime) {
-  var tmpId = mime === MimeType.GOOGLE_SHEETS ? null : convertToSheet_(fileId);
-  var id = tmpId || fileId;
-  var url = 'https://docs.google.com/spreadsheets/d/' + id +
-    '/export?format=pdf&size=A4&portrait=false&fitw=true&gridlines=false&printtitle=false&sheetnames=false&pagenum=UNDEFINED';
-  var res = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
-  if (tmpId) DriveApp.getFileById(tmpId).setTrashed(true);
-  if (res.getResponseCode() !== 200) throw new Error('export PDF impossible');
-  return res.getBlob().getBytes();
+  var tmpId = null, errors = [];
+  try {
+    tmpId = mime === MimeType.GOOGLE_SHEETS ? null : convertToSheet_(fileId);
+    var id = tmpId || fileId;
+    var url = 'https://docs.google.com/spreadsheets/d/' + id +
+      '/export?format=pdf&size=A4&portrait=false&fitw=true&gridlines=false&printtitle=false&sheetnames=false';
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt) Utilities.sleep(2000); // un fichier tout juste converti n'est pas toujours prêt
+      var res = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true, followRedirects: true });
+      var ct = String(res.getHeaders()['Content-Type'] || '');
+      if (res.getResponseCode() === 200 && ct.indexOf('pdf') >= 0) return res.getBlob().getBytes();
+      errors.push('export ' + res.getResponseCode());
+    }
+    try { return DriveApp.getFileById(id).getAs('application/pdf').getBytes(); }
+    catch (e) { errors.push('conversion ' + e.message); }
+  } catch (e) {
+    errors.push(e.message);
+  } finally {
+    if (tmpId) { try { DriveApp.getFileById(tmpId).setTrashed(true); } catch (e) { /* sans importance */ } }
+  }
+  try { return valuesToPdf_(fileId); }
+  catch (e) { errors.push('tableau ' + e.message); }
+  throw new Error('export PDF impossible (' + errors.join(' ; ') + ')');
+}
+
+/** Dernier recours : tableau HTML des valeurs du classeur, converti en PDF. */
+function valuesToPdf_(fileId) {
+  var name = DriveApp.getFileById(fileId).getName();
+  var sheets = readSpreadsheetValues_(fileId);
+  var h = ['<!DOCTYPE html><html><head><meta charset="utf-8"><style>',
+    '@page { size: A4 landscape; margin: 10mm; } body { font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #1d2433; }',
+    'h1 { font-size: 11pt; color: #0f2a4a; } table { border-collapse: collapse; width: 100%; font-size: 8pt; margin-bottom: 12px; }',
+    'td { border-bottom: 1px solid #e3e7ee; padding: 3px 4px; } tr:first-child td { font-weight: bold; background: #f3f5f8; }',
+    '</style></head><body><h1>' + esc_(name) + '</h1>'];
+  sheets.forEach(function (rows) {
+    var kept = rows.filter(function (r) { return r.some(function (c) { return String(c).trim(); }); });
+    if (!kept.length) return;
+    h.push('<table>');
+    kept.forEach(function (r) { h.push('<tr>' + r.map(function (c) { return '<td>' + esc_(c) + '</td>'; }).join('') + '</tr>'); });
+    h.push('</table>');
+  });
+  h.push('</body></html>');
+  return Utilities.newBlob(h.join(''), 'text/html', 'tableau.html').getAs('application/pdf').getBytes();
 }
 
 function recapHtml_(month, person, cfg, numero, refs, annexes) {
