@@ -33,7 +33,8 @@ var DEFAULT_TARIFS = [
   ['FORFAIT_BE', 'Forfait journée extérieure (Belgique)', 21.64, '2026-03-01', 'Circulaire 2026/C/35 SPF Finances', ''],
   ['PERDIEM_LU', 'Per diem Luxembourg (catégorie 1)', 107, '2025-08-01', 'AM 14/07/2025', ''],
   ['PERDIEM_DE', 'Per diem Allemagne (catégorie 1)', 92, '2025-08-01', 'AM 14/07/2025', ''],
-  ['PERDIEM_FR', 'Per diem France (catégorie 1)', '', '2025-08-01', 'À compléter', ''],
+  ['PERDIEM_FR', 'Per diem France (catégorie 1)', 95, '2025-08-01', 'AM 14/07/2025', ''],
+  ['PERDIEM_GB', 'Per diem Royaume-Uni (catégorie 1)', 110, '2025-08-01', 'AM 14/07/2025', ''],
   ['TAUX_DOMICILE', 'Quote-part professionnelle du domicile', 0.42, '2000-01-01', 'Convention société', ''],
   ['PRIX_KWH_BORNE', 'Prix du kWh borne de recharge', 0.40, '2026-01-01', 'Contrat TotalEnergies', '']
 ];
