@@ -172,9 +172,10 @@ function init() {
     $('person').innerHTML = b.persons.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nom) + '</option>'; }).join('');
     S.person = pref('person') && b.persons.some(function (p) { return p.id === pref('person'); }) ? pref('person') : b.persons[0].id;
     $('person').value = S.person;
-    var now = new Date(); now.setDate(1);
-    if (now.getDate() <= 15) now.setMonth(now.getMonth() - 1);
-    S.ym = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+    // Mois en cours par défaut ; les 5 premiers jours, le mois précédent (clôture de la note).
+    var today = new Date();
+    var ref = new Date(today.getFullYear(), today.getMonth() - (today.getDate() <= 5 ? 1 : 0), 1);
+    S.ym = ref.getFullYear() + '-' + ('0' + (ref.getMonth() + 1)).slice(-2);
     if (!b.hasApiKey) toast('Ajoutez votre clé API Claude dans Réglages pour la lecture automatique.', 5000);
     return load();
   }).catch(fail);
